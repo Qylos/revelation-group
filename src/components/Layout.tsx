@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { DoodleSparkle, WavyCoralUnderline } from './Doodles';
-import { CustomSelect, SelectOption } from './CustomSelect';
 import { exportDatabaseToExcel } from '../services/googleSheetsService';
 import { IosInstallPrompt } from './IosInstallPrompt';
 
@@ -27,7 +26,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     isSyncing,
     lastSyncTime,
     pullFromGoogleSheets,
-    switchDemoUser,
     logout,
   } = useApp();
   const location = useLocation();
@@ -40,45 +38,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
   const matchBiz = location.pathname.match(/^\/business\/([^/]+)/);
   const currentBusinessId = matchBiz ? matchBiz[1] : '';
-
-  const handleBusinessSwitch = (val: string) => {
-    if (!val || val === 'GLOBAL') {
-      navigate('/dashboard');
-      return;
-    }
-    if (location.pathname.includes('/products') && canManageBusinessAndProducts) {
-      navigate(`/business/${val}/products`);
-    } else {
-      navigate(`/business/${val}/dashboard`);
-    }
-  };
-
-  const businessOptions: SelectOption[] = [
-    {
-      value: 'GLOBAL',
-      label: `Semua Bisnis (${activeBusinesses.length})`,
-    },
-    ...activeBusinesses.map((biz) => ({
-      value: biz.id,
-      label: biz.name,
-      accentColor: biz.card_accent_color,
-      logoUrl: biz.logo_url || undefined,
-    })),
-  ];
-
-  const getCleanRoleLabel = (role?: string) => {
-    if (role === 'super_admin') return 'Super Admin';
-    if (role === 'admin') return 'Partner Admin';
-    return 'Member';
-  };
-
-  const userOptions: SelectOption[] = db.users
-    .filter((u) => u.is_active)
-    .map((u) => ({
-      value: u.id,
-      label: u.full_name.slice(0, 20),
-      badge: getCleanRoleLabel(u.role),
-    }));
 
   // Navigation items: Member ONLY sees "Input Transaksi", Super Admin ONLY sees "Super Admin"
   const navItems = [
@@ -126,13 +85,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       isActive: location.pathname === '/super-admin',
     },
   ].filter((item) => item.visible);
-
-  const roleBadgeColor =
-    currentUser?.role === 'super_admin'
-      ? 'bg-pastel-yellow text-ink border-ink/25'
-      : currentUser?.role === 'admin'
-      ? 'bg-pastel-lavender text-ink border-ink/20'
-      : 'bg-pastel-blue text-ink border-ink/20';
 
   return (
     <div className="min-h-screen flex flex-col bg-cream text-ink pb-28 md:pb-12">
@@ -206,43 +158,54 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 </>
               )}
 
-              {/* Semua Bisnis Picker — Moved right next to Profile (hidden for member who only inputs transactions) */}
-              {!isMember && (
-                <CustomSelect
-                  size="sm"
-                  align="right"
-                  value={currentBusinessId || 'GLOBAL'}
-                  onChange={handleBusinessSwitch}
-                  options={businessOptions}
-                  className="w-[130px] sm:w-[215px]"
-                  buttonClassName="bg-surface hover:border-cobalt text-ink border-ink/20 shadow-sm text-xs"
-                  menuClassName="min-w-[240px]"
-                />
-              )}
-
-              {/* Profile / Role Switcher (Custom Revelation Dropdown) + Logout */}
+              {/* Profile Pill (Navigates to /profile) + Logout */}
               {currentUser && (
-                <div className="flex items-center gap-1 sm:gap-1.5">
-                  <div className="hidden sm:block">
-                    <CustomSelect
-                      size="sm"
-                      align="right"
-                      value={currentUser.id}
-                      onChange={(uid) => switchDemoUser(uid)}
-                      options={userOptions}
-                      className="w-[138px] sm:w-[162px]"
-                      buttonClassName={roleBadgeColor}
-                      menuClassName="min-w-[245px]"
-                    />
-                  </div>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <Link
+                    to="/profile"
+                    title="Buka Profil & Pengaturan Akun"
+                    className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-full bg-pastel-yellow hover:bg-pastel-yellow/80 border-2 border-ink text-ink shadow-[2px_2px_0px_rgba(17,24,39,1)] hover:shadow-none hover:translate-x-[1px] hover:translate-y-[1px] transition-all cursor-pointer select-none group"
+                  >
+                    {/* User Avatar or Initials */}
+                    <div className="w-6 h-6 rounded-full overflow-hidden bg-ink text-pastel-yellow flex items-center justify-center text-[10px] font-black shrink-0 border border-ink/20">
+                      {currentUser.avatar_url ? (
+                        <img
+                          src={currentUser.avatar_url}
+                          alt={currentUser.full_name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span>
+                          {currentUser.full_name
+                            .split(' ')
+                            .map((n) => n[0])
+                            .slice(0, 2)
+                            .join('')
+                            .toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+
+                    <span className="text-xs font-extrabold text-ink group-hover:text-cobalt transition truncate max-w-[85px] sm:max-w-[130px]">
+                      {currentUser.full_name}
+                    </span>
+
+                    <span className="hidden sm:inline-block text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-surface/90 border border-ink/20 text-ink/80 tracking-wider">
+                      {currentUser.role === 'super_admin'
+                        ? 'SUPER'
+                        : currentUser.role === 'admin'
+                        ? 'PARTNER'
+                        : 'MEMBER'}
+                    </span>
+                  </Link>
 
                   <button
                     onClick={() => {
                       logout();
                       navigate('/login');
                     }}
-                    title="Keluar / Ganti Akun di Halaman Login"
-                    className="p-2 rounded-full bg-surface border border-ink/15 hover:bg-loss-bg hover:text-loss-text hover:border-loss-accent transition"
+                    title="Keluar / Sign Out dari Akun"
+                    className="p-2 rounded-full bg-surface border border-ink/15 hover:bg-loss-bg hover:text-loss-text hover:border-loss-accent transition cursor-pointer"
                   >
                     <LogOut className="w-4 h-4" />
                   </button>
@@ -260,7 +223,13 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`px-5 py-2.5 rounded-t-2xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition-all select-none ${
+                    onClick={(e) => {
+                      if (item.isActive) {
+                        e.preventDefault();
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }
+                    }}
+                    className={`px-5 py-2.5 rounded-t-2xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition-all select-none cursor-pointer ${
                       item.isActive
                         ? 'bg-pastel-yellow text-ink border-t-2 border-x-2 border-ink shadow-[2px_-2px_0px_rgba(17,24,39,0.08)] relative -mb-[2px] pb-[12px] z-20'
                         : 'bg-cream/80 hover:bg-pastel-lavender/40 text-ink/70 hover:text-ink border-t-2 border-x-2 border-pastel-lavender'
@@ -283,31 +252,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         </div>
       </header>
 
-      {/* Mobile User / Role Banner (Clean compact strip on mobile) */}
-      {currentUser && (
-        <div className="sm:hidden bg-surface/90 border-b border-ink/10 px-3.5 py-1.5 flex items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-1.5 truncate">
-            <span
-              className={`px-2 py-0.5 rounded-full font-bold border text-[10px] whitespace-nowrap ${roleBadgeColor}`}
-            >
-              {getCleanRoleLabel(currentUser.role)}
-            </span>
-            <span className="text-ink/80 truncate font-semibold text-[11px]">
-              {currentUser.full_name.slice(0, 20)}
-            </span>
-          </div>
-          <CustomSelect
-            size="sm"
-            align="right"
-            value={currentUser.id}
-            onChange={(uid) => switchDemoUser(uid)}
-            options={userOptions}
-            className="w-32 shrink-0"
-            buttonClassName="text-[11px] py-1"
-          />
-        </div>
-      )}
-
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 py-5 sm:py-8">
         {children}
@@ -325,7 +269,13 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex-1 flex flex-col items-center justify-center py-1.5 px-1 rounded-xl relative transition active:scale-95 ${
+                onClick={(e) => {
+                  if (item.isActive) {
+                    e.preventDefault();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
+                className={`flex-1 flex flex-col items-center justify-center py-1.5 px-1 rounded-xl relative transition active:scale-95 cursor-pointer ${
                   item.isActive
                     ? 'text-cobalt font-extrabold'
                     : 'text-ink/60 font-medium hover:text-ink'

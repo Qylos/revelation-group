@@ -10,6 +10,7 @@ import { BusinessesPage } from './pages/BusinessesPage';
 import { ProductsHppPage } from './pages/ProductsHppPage';
 import { TransactionsPage } from './pages/TransactionsPage';
 import { SuperAdminPage } from './pages/SuperAdminPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -78,6 +79,14 @@ const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <SuperAdminPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <ProfilePage />
           </ProtectedRoute>
         }
       />

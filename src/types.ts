@@ -21,6 +21,7 @@ export interface User {
   role: UserRole;
   is_active: boolean;
   password?: string;
+  avatar_url?: string;
   invite_token?: string;
   invite_expires_at?: number;
   created_at: string;
@@ -100,6 +101,8 @@ export interface BalanceAdjustment {
   actual_bank_balance: number;
   difference_amount: number; // actual_bank_balance - system_balance_before
   reason: string;
+  tag?: string;
+  type?: 'addition' | 'deduction';
   created_by: string; // foreign key -> users.id
   created_at: string;
 }

@@ -7,7 +7,6 @@ import {
   Lock,
   CheckCircle2,
   X,
-  ArrowLeft,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { HppComponentItem, HppMode, Product } from '../types';
@@ -165,28 +164,18 @@ export const ProductsHppPage: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      {/* Top Bar & Custom Business Selector */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link
-          to={`/business/${currentBusiness.id}/dashboard`}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-ink/70 hover:text-cobalt transition"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Ke Dashboard {currentBusiness.name}</span>
-        </Link>
-
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-ink/60">Pilih Bisnis:</span>
-          <CustomSelect
-            size="sm"
-            align="right"
-            value={currentBusiness.id}
-            onChange={(val) => navigate(`/business/${val}/products`)}
-            options={businessOptions}
-            className="w-56"
-            buttonClassName="bg-surface border-ink/20 text-ink shadow-sm"
-          />
-        </div>
+      {/* Custom Business Selector */}
+      <div className="flex items-center justify-end gap-2">
+        <span className="text-xs font-bold text-ink/60">Pilih Bisnis:</span>
+        <CustomSelect
+          size="sm"
+          align="right"
+          value={currentBusiness.id}
+          onChange={(val) => navigate(`/business/${val}/products`)}
+          options={businessOptions}
+          className="w-56"
+          buttonClassName="bg-surface border-ink/20 text-ink shadow-sm"
+        />
       </div>
 
       {/* Header & Historical Snapshot Notice */}
@@ -316,7 +305,7 @@ export const ProductsHppPage: React.FC = () => {
                       }`}
                     >
                       <span className="block font-semibold opacity-80 whitespace-nowrap truncate">
-                        Margin (Rp)
+                        Margin / Item
                       </span>
                       <span
                         className={`font-serif font-extrabold mt-0.5 block whitespace-nowrap tracking-tight ${getDynamicMetricFontSize(
@@ -347,29 +336,29 @@ export const ProductsHppPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Rincian Komponen HPP — Fixed height & scrollable with Revelation scrollbar when > 3 items */}
+                  {/* Rincian Komponen HPP — Clean scroll box with no text truncation */}
                   <div className="mt-4 pt-3 border-t border-dashed border-ink/15">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-[11px] font-extrabold uppercase tracking-wider text-ink/60">
                         Rincian Komponen HPP:
                       </p>
                       {displayComponents.length > 3 && (
-                        <span className="text-[10px] font-bold text-cobalt">
-                          Scroll ↓ ({displayComponents.length} item)
+                        <span className="text-[10px] font-bold text-cobalt bg-pastel-blue/50 px-2 py-0.5 rounded-full border border-cobalt/20">
+                          Scroll ↓ ({displayComponents.length} komponen)
                         </span>
                       )}
                     </div>
                     <div
-                      className={`space-y-1.5 ${
+                      className={`space-y-1.5 rounded-xl bg-cream/60 p-2.5 border border-ink/10 ${
                         displayComponents.length > 3
-                          ? 'max-h-[72px] overflow-y-auto pr-2 revelation-scroll'
+                          ? 'max-h-[96px] overflow-y-auto pr-1.5 revelation-scroll'
                           : ''
                       }`}
                     >
                       {displayComponents.map((comp, idx) => (
                         <div
                           key={idx}
-                          className="flex items-center justify-between text-xs text-ink/80 gap-2"
+                          className="flex items-center justify-between text-xs text-ink/80 gap-2 py-0.5"
                         >
                           <span className="truncate">• {comp.item_name}</span>
                           <span className="font-bold whitespace-nowrap shrink-0">

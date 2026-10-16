@@ -8,11 +8,15 @@ import {
   ArrowLeft,
   Flame,
   BarChart3,
+  X,
+  ShoppingBag,
+  Receipt,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { DateRangeFilter } from '../types';
 import {
   calculateFinancialSummary,
+  formatFullIndoDate,
   formatIndoDate,
   formatRupiah,
   formatShortRupiah,
@@ -29,6 +33,7 @@ export const BusinessDashboardPage: React.FC = () => {
   const [customStartDate, setCustomStartDate] = useState<string>(getTodayDateString());
   const [customEndDate, setCustomEndDate] = useState<string>(getTodayDateString());
   const [isCustomRangeMode, setIsCustomRangeMode] = useState<boolean>(false);
+  const [selectedTrendDate, setSelectedTrendDate] = useState<string | null>(null);
 
   // Member only accesses /transactions
   if (currentUser?.role === 'member') {
@@ -123,8 +128,69 @@ export const BusinessDashboardPage: React.FC = () => {
       map.set(ex.transaction_date, cur);
     });
 
-    return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+    return Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date));
   }, [bizSales, bizExpenses]);
+
+  const selectedTrendData = useMemo(() => {
+    if (!selectedTrendDate) return null;
+    const targetDay = dailyTrend.find((d) => d.date === selectedTrendDate);
+    const revenue = targetDay?.revenue || 0;
+    const hpp = targetDay?.hpp || 0;
+    const ops = targetDay?.ops || 0;
+    const grossProfit = revenue - hpp;
+    const netProfit = targetDay?.net ?? grossProfit - ops;
+    const isProfit = netProfit >= 0;
+
+    const sales = bizSales.filter((tx) => tx.transaction_date === selectedTrendDate);
+    const expenses = bizExpenses.filter((ex) => ex.transaction_date === selectedTrendDate);
+
+    // Analytical insight explaining what caused profit or loss
+    let insight = '';
+    if (sales.length === 0 && expenses.length === 0) {
+      insight = 'Tidak ada transaksi penjualan maupun beban pengeluaran operasional pada tanggal ini.';
+    } else if (sales.length === 0 && ops > 0) {
+      insight = `Penyebab Rugi: Tidak ada penjualan produk tercatat pada hari ini, namun terdapat beban pengeluaran operasional sebesar ${formatRupiah(
+        ops
+      )}, sehingga menyebabkan defisit bersih ${formatRupiah(Math.abs(netProfit))}.`;
+    } else if (isProfit) {
+      if (ops === 0) {
+        insight = `Penyebab Laba: Penjualan produk menghasilkan omzet ${formatRupiah(
+          revenue
+        )} dengan margin kotor ${formatRupiah(
+          grossProfit
+        )}. Tanpa ada beban operasional hari ini, seluruh margin kotor menjadi laba bersih.`;
+      } else {
+        insight = `Penyebab Laba: Laba kotor penjualan produk (${formatRupiah(
+          grossProfit
+        )}) berhasil melampaui seluruh beban biaya operasional (${formatRupiah(
+          ops
+        )}), menghasilkan laba bersih ${formatRupiah(netProfit)}.`;
+      }
+    } else {
+      insight = `Penyebab Rugi: Meskipun terdapat omzet sebesar ${formatRupiah(
+        revenue
+      )} (laba kotor ${formatRupiah(
+        grossProfit
+      )}), total pengeluaran operasional hari ini yang mencapai ${formatRupiah(
+        ops
+      )} lebih besar daripada margin kotor yang didapat, sehingga menimbulkan rugi bersih ${formatRupiah(
+        Math.abs(netProfit)
+      )}.`;
+    }
+
+    return {
+      date: selectedTrendDate,
+      revenue,
+      hpp,
+      grossProfit,
+      ops,
+      netProfit,
+      isProfit,
+      insight,
+      sales,
+      expenses,
+    };
+  }, [selectedTrendDate, dailyTrend, bizSales, bizExpenses]);
 
   const productLeaderboard = useMemo(() => {
     const prodMap = new Map<
@@ -356,12 +422,21 @@ export const BusinessDashboardPage: React.FC = () => {
                 return (
                   <div
                     key={day.date}
-                    className="p-3.5 rounded-xl bg-cream/60 border border-ink/10 space-y-2"
+                    onClick={() => setSelectedTrendDate(day.date)}
+                    role="button"
+                    tabIndex={0}
+                    title="Klik untuk melihat rincian penyebab laba/rugi"
+                    className="p-3.5 rounded-xl bg-cream/60 hover:bg-pastel-yellow/35 border border-ink/10 hover:border-ink/30 transition-all cursor-pointer space-y-2 group shadow-sm hover:shadow"
                   >
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-extrabold text-ink">
-                        📅 {formatIndoDate(day.date)}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-ink group-hover:text-cobalt transition">
+                          📅 {formatIndoDate(day.date)}
+                        </span>
+                        <span className="text-[10px] font-bold text-ink/50 group-hover:text-ink/80 inline-flex items-center gap-0.5">
+                          • Rincian ↗
+                        </span>
+                      </div>
                       <span
                         className={`font-extrabold px-2 py-0.5 rounded-full text-[11px] ${
                           dayProfit
@@ -637,6 +712,206 @@ export const BusinessDashboardPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Modal Popup Analisa Penyebab Laba / Rugi Per Tanggal */}
+      {selectedTrendData && (
+        <div
+          className="fixed inset-0 !m-0 z-[100] bg-ink/60 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto"
+          onClick={() => setSelectedTrendDate(null)}
+        >
+          <div
+            className="bg-surface rounded-3xl border-2 border-ink shadow-editorial max-w-2xl w-full overflow-hidden my-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="bg-pastel-yellow px-6 py-4 border-b-2 border-ink flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-ink/70 block">
+                  {business?.name} • Analisa Keuangan Harian
+                </span>
+                <h3 className="font-serif font-extrabold text-xl text-ink">
+                  {formatFullIndoDate(selectedTrendData.date)}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedTrendDate(null)}
+                className="p-1.5 rounded-full bg-surface/80 hover:bg-surface border border-ink/20 text-ink hover:text-loss-text transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-6 max-h-[78vh] overflow-y-auto revelation-scroll">
+              {/* Status & Insight Callout Box */}
+              <div
+                className={`p-4 rounded-2xl border-2 ${
+                  selectedTrendData.isProfit
+                    ? 'bg-profit-bg/80 border-profit-accent text-profit-text'
+                    : 'bg-loss-bg/80 border-loss-accent text-loss-text'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <div className="flex items-center gap-2">
+                    {selectedTrendData.isProfit ? (
+                      <TrendingUp className="w-5 h-5 shrink-0" />
+                    ) : (
+                      <TrendingDown className="w-5 h-5 shrink-0" />
+                    )}
+                    <span className="font-bold text-sm uppercase tracking-wide">
+                      {selectedTrendData.isProfit ? 'Status: Laba Bersih' : 'Status: Rugi Bersih'}
+                    </span>
+                  </div>
+                  <span className="font-serif font-extrabold text-lg tracking-tight">
+                    {formatRupiah(selectedTrendData.netProfit, true)}
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm font-medium leading-relaxed opacity-95">
+                  {selectedTrendData.insight}
+                </p>
+              </div>
+
+              {/* 4 Financial Breakdown Metrics */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                <div className="p-3 rounded-xl bg-cream/70 border border-ink/10">
+                  <span className="text-ink/60 font-semibold block text-[11px]">1. Total Omzet</span>
+                  <span className="font-serif font-extrabold text-cobalt text-sm block mt-0.5">
+                    {formatRupiah(selectedTrendData.revenue)}
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl bg-cream/70 border border-ink/10">
+                  <span className="text-ink/60 font-semibold block text-[11px]">2. Total HPP (COGS)</span>
+                  <span className="font-serif font-extrabold text-ink text-sm block mt-0.5">
+                    {formatRupiah(selectedTrendData.hpp)}
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl bg-cream/70 border border-ink/10">
+                  <span className="text-ink/60 font-semibold block text-[11px]">3. Laba Kotor (Gross)</span>
+                  <span
+                    className={`font-serif font-extrabold text-sm block mt-0.5 ${
+                      selectedTrendData.grossProfit >= 0 ? 'text-profit-text' : 'text-loss-text'
+                    }`}
+                  >
+                    {formatRupiah(selectedTrendData.grossProfit, true)}
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl bg-cream/70 border border-ink/10">
+                  <span className="text-ink/60 font-semibold block text-[11px]">4. Beban Operasional</span>
+                  <span className="font-serif font-extrabold text-ink text-sm block mt-0.5">
+                    {formatRupiah(selectedTrendData.ops)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Section: Penjualan Produk Terjual */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-ink/10 pb-1.5">
+                  <h4 className="font-serif font-bold text-sm text-ink flex items-center gap-1.5">
+                    <ShoppingBag className="w-4 h-4 text-cobalt" />
+                    <span>Rincian Produk Terjual ({selectedTrendData.sales.length} transaksi)</span>
+                  </h4>
+                  <span className="text-xs font-bold text-cobalt">
+                    Total: {formatRupiah(selectedTrendData.revenue)}
+                  </span>
+                </div>
+
+                {selectedTrendData.sales.length === 0 ? (
+                  <div className="py-4 text-center text-xs text-ink/60 bg-cream/40 rounded-xl border border-dashed border-ink/10">
+                    Tidak ada transaksi penjualan produk pada tanggal ini.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedTrendData.sales.map((tx) => {
+                      const prod = db.products.find((p) => p.id === tx.product_id);
+                      const prodName = prod ? prod.name : 'Produk Terhapus';
+                      const txRev = Number(tx.qty) * Number(tx.selling_price_snapshot);
+                      const txHpp = Number(tx.qty) * Number(tx.hpp_snapshot);
+                      const txMargin = txRev - txHpp;
+
+                      return (
+                        <div
+                          key={tx.id}
+                          className="p-3 rounded-xl bg-cream/50 border border-ink/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-extrabold text-ink">{prodName}</span>
+                              <span className="px-2 py-0.5 rounded-full bg-pastel-yellow/70 border border-ink/10 text-[10px] font-bold">
+                                {tx.qty} pcs
+                              </span>
+                            </div>
+                            <p className="text-ink/60 text-[11px] mt-0.5">
+                              Harga Jual: {formatRupiah(tx.selling_price_snapshot)} • HPP Snapshot: {formatRupiah(tx.hpp_snapshot)}
+                            </p>
+                          </div>
+                          <div className="text-left sm:text-right shrink-0">
+                            <span className="text-ink font-bold block">
+                              Omzet: {formatRupiah(txRev)}
+                            </span>
+                            <span className="text-[11px] font-extrabold text-profit-text block">
+                              Margin: +{formatRupiah(txMargin)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Section: Pengeluaran Operasional */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-ink/10 pb-1.5">
+                  <h4 className="font-serif font-bold text-sm text-ink flex items-center gap-1.5">
+                    <Receipt className="w-4 h-4 text-loss-text" />
+                    <span>Rincian Beban Operasional ({selectedTrendData.expenses.length} pengeluaran)</span>
+                  </h4>
+                  <span className="text-xs font-bold text-loss-text">
+                    Total: {formatRupiah(selectedTrendData.ops)}
+                  </span>
+                </div>
+
+                {selectedTrendData.expenses.length === 0 ? (
+                  <div className="py-4 text-center text-xs text-ink/60 bg-cream/40 rounded-xl border border-dashed border-ink/10">
+                    Tidak ada biaya operasional yang dikeluarkan pada tanggal ini.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedTrendData.expenses.map((ex) => (
+                      <div
+                        key={ex.id}
+                        className="p-3 rounded-xl bg-cream/50 border border-ink/10 flex items-center justify-between gap-2 text-xs"
+                      >
+                        <div>
+                          <span className="font-extrabold text-ink block">{ex.category}</span>
+                          {ex.notes && (
+                            <p className="text-ink/60 text-[11px] mt-0.5">{ex.notes}</p>
+                          )}
+                        </div>
+                        <span className="font-bold text-loss-text shrink-0">
+                          -{formatRupiah(ex.amount)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-3.5 bg-cream/80 border-t border-ink/10 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedTrendDate(null)}
+                className="px-5 py-2 rounded-full bg-ink hover:bg-cobalt text-white text-xs font-bold transition"
+              >
+                Tutup Rincian
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

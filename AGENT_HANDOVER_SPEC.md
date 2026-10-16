@@ -353,5 +353,66 @@ Badge mengambang *"Powered by Netlify"* diinjeksi secara dinamis oleh Netlify Ed
    Untuk menonaktifkan sepenuhnya dari sisi server Netlify:
    - Buka akun Netlify -> Pilih proyek **revelation-group**.
    - Masuk ke menu **Project configuration** -> **General** -> cari bagian **Powered by Netlify badge**.
-   - Alihkan tombol toggle ke posisi **Off** dan Simpan.
+
+---
+
+## 11. DOKUMENTASI UPGRADE FITUR TERBARU (PROFIL, REKONSILIASI TAG, & SWITCHER BISNIS)
+
+### A. Modul Profil Pengguna & Avatar Cropper (`/profile`)
+1. **Pembaruan Top Bar (`src/components/Layout.tsx`):**
+   - Menghapus dropdown demo switcher akun di header dan mobile bar agar otentikasi aman dan tidak sembarang orang bisa berganti akun.
+   - Menggantinya dengan **Profile Button Pill** yang menampilkan foto avatar pengguna / inisial nama, nama lengkap, badge role, serta tombol **Keluar (Sign Out)**.
+   - Mengklik pill profil mengarahkan pengguna ke halaman `/profile`.
+
+2. **Halaman Profil Mandiri (`src/pages/ProfilePage.tsx`):**
+   - **Ganti Foto Profil:**
+     - Mendukung upload file gambar dengan kompresi dan downscale otomatis via HTML5 Canvas (maks. 800px) untuk mencegah ukuran payload terlalu besar.
+     - **Modal Interactive Circular Cropper:** Dilengkapi fitur pan/drag foto, slider zoom level, pratinjau lingkaran avatar, dan ekspor Base64 beresolusi tinggi.
+   - **Ganti Password:**
+     - Validasi password lama dengan verifikasi salted SHA-256 hash.
+     - Input password baru (min. 6 karakter) dan konfirmasi password baru dengan tombol show/hide eye toggle.
+   - **Ganti Nama Lengkap:** Form edit nama tampilan pengguna langsung tersinkronisasi ke seluruh sistem.
+   - **Tombol Sign Out / Keluar:** Menghapus sesi login dan mengarahkan kembali ke `/login`.
+
+### B. Business Switcher di Header Dashboard & Tampilan Dinamis (`src/pages/GlobalDashboardPage.tsx`)
+1. **Pemindahan Pemilih Bisnis:**
+   - Dropdown *"Semua Bisnis"* dipindahkan dari top navigation bar ke samping judul Dashboard, tepat di atas bilah filter tanggal.
+2. **Perubahan View Dinamis:**
+   - **Mode "Semua Bisnis" (GLOBAL):** Menampilkan Laporan Konsolidasi Global (Kas Rekening Bank Bersama, 3 Kartu Ringkasan Global, Tabel Performa Antar Bisnis & Pos R&D, serta Grafik Perbandingan).
+   - **Mode Unit Bisnis Terpilih:**
+     - Judul dashboard otomatis berganti menjadi nama unit bisnis dengan doodle bintang beraksen warna bisnis.
+     - Subjudul menampilkan deskripsi unit bisnis.
+     - Filter tanggal tetap aktif dan tidak berubah.
+     - Tampilan di bawah filter tanggal bertransformasi menjadi laporan performa unit bisnis:
+       1. **4 Kartu Ringkasan:** Omzet Penjualan, HPP Terpakai, Beban Operasional, dan Laba/Rugi Bersih.
+       2. **Tren Performa Harian (Descending Sort):** Diurutkan dari tanggal terbaru ke terlama. Setiap kartu dapat diklik untuk membuka popup modal analisa performa harian lengkap (penyebab laba/rugi, rincian produk terjual, rincian beban operasional).
+       3. **Leaderboard Produk Terlaris:** Peringkat kontribusi laba kotor tertinggi.
+
+### C. Hak Akses Kartu Kas & Rekening Bank Partner
+- **Box 1 (Saldo Awal Bank):** Hanya dapat diklik oleh **Super Admin** (`isSuperAdminUser`). Memiliki animasi hover dan membuka modal pengaturan saldo awal. Pengguna non-Super Admin berstatus statis (`cursor-default`).
+- **Box 2 (Laba/Rugi Bersih & R&D All-Time):** Statis (`cursor-default`) sebagai informasi akumulasi menyeluruh.
+- **Box 3 (Penyesuaian Rekonsiliasi):** Dapat diklik oleh **Super Admin & Partner Admin** (`canManageBusinessAndProducts`). Memiliki animasi hover dan membuka **Modul Rekonsiliasi Saldo Bank**.
+- **Box 4 (Saldo Akhir Bank Saat Ini):** Menampilkan saldo riil hasil kalkulasi: Saldo Awal + Laba/Rugi All-Time ± Rekonsiliasi.
+
+### D. Modul Rekonsiliasi Saldo Bank & Sistem Tag (`src/pages/GlobalDashboardPage.tsx`)
+1. **Struktur 4 Tab Interaktif:**
+   - **Tab 1: + / - Penyesuaian Saldo:**
+     - Pemilih jenis penyesuaian: `+ Tambah Saldo Bank` atau `- Kurang Saldo Bank`.
+     - Input nominal dan pemilih tanggal penyesuaian.
+     - **Sistem Tag Transaksi:** Chip tag riwayat yang tidak dapat diedit namun dapat dipilih berulang kali untuk mencatat transaksi sejenis, serta input tag kustom yang otomatis tersimpan ke riwayat.
+     - Input catatan/keterangan alasan penyesuaian.
+     - Pratinjau dampak penyesuaian terhadap saldo saat ini dan estimasi saldo baru.
+   - **Tab 2: Koreksi Saldo Riil Bank:**
+     - Satu baris input: *"Saldo Bank Saat ini \*"* yang otomatis menghitung selisih koreksi dengan saldo pembukuan sistem.
+   - **Tab 3: Laporan Dampak Per Tag (Report Generator):**
+     - Kartu analitik: **🔻 Bagian yang Mengambil / Mengurangi Paling Banyak** (nama tag, total potongan, frekuensi transaksi).
+     - Kartu analitik: **🔺 Bagian yang Menambahkan Paling Banyak** (nama tag, total penambahan, frekuensi transaksi).
+     - Tabel komprehensif seluruh tag beserta frekuensi, total penambahan (+), total pengurangan (-), dan dampak bersih (Net).
+   - **Tab 4: Riwayat Log Audit:** Daftar riwayat rekonsiliasi yang mencatat tanggal, selisih, tag, alasan, nama pembuat, dan tombol hapus catatan.
+
+### E. Perbaikan Tampilan & Navigasi Lainnya
+1. **Scroll-to-Top:** Mengklik tab navigasi yang sedang aktif di top bar otomatis melakukan smooth scroll ke puncak halaman.
+2. **Label Margin HPP:** Mengubah label *"Margin (Rp)"* menjadi *"Margin / Item"* di halaman Produk & HPP.
+3. **Container Komponen HPP:** Memperbaiki clipping teks pada daftar komponen HPP dengan kontainer scroll yang rapi (`revelation-scroll`).
+4. **Pembersihan Navigasi HPP:** Menghapus tautan usang *"← Ke Dashboard ..."* dan merapikan posisi selektor bisnis ke kanan.
 

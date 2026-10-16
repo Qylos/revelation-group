@@ -214,12 +214,23 @@ export const BusinessesPage: React.FC = () => {
                     style={{ backgroundColor: accentHex }}
                   >
                     <span className="text-ink/70 font-semibold block">Status All-Time</span>
-                    <div className="mt-0.5">
-                      <ProfitLossBadge
-                        status={summary.profit_status}
-                        label={summary.profit_status}
-                        size="sm"
-                      />
+                    <div className="mt-0.5 space-y-1">
+                      <span
+                        className={`font-serif font-extrabold text-sm sm:text-base block truncate tracking-tight ${
+                          summary.net_profit_or_loss >= 0
+                            ? 'text-profit-text'
+                            : 'text-loss-text'
+                        }`}
+                      >
+                        {formatRupiah(summary.net_profit_or_loss, true)}
+                      </span>
+                      <div>
+                        <ProfitLossBadge
+                          status={summary.profit_status}
+                          label={summary.profit_status}
+                          size="sm"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>

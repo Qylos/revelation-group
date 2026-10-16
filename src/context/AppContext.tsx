@@ -54,6 +54,12 @@ interface AppContextType {
     oldPassword: string,
     newPassword: string
   ) => { ok: boolean; message?: string };
+  updateCurrentUserProfile: (updates: {
+    full_name?: string;
+    avatar_url?: string;
+    old_password?: string;
+    new_password?: string;
+  }) => { ok: boolean; message?: string };
   // Google Sheets Sync
   sheetsApiKey: string;
   setSheetsApiKey: (key: string) => void;
@@ -115,6 +121,8 @@ interface AppContextType {
     system_balance_before: number;
     actual_bank_balance: number;
     reason: string;
+    tag?: string;
+    type?: 'addition' | 'deduction';
   }) => void;
   deleteBalanceAdjustment: (adjustmentId: string) => void;
 }
@@ -552,6 +560,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const updateCurrentUserProfile = (updates: {
+    full_name?: string;
+    avatar_url?: string;
+    old_password?: string;
+    new_password?: string;
+  }): { ok: boolean; message?: string } => {
+    if (!currentUser) return { ok: false, message: 'Tidak ada sesi pengguna aktif.' };
+
+    if (updates.new_password) {
+      if (!updates.old_password) {
+        return { ok: false, message: 'Password saat ini wajib diisi untuk verifikasi keamanan.' };
+      }
+      if (!verifyPassword(updates.old_password, currentUser.password)) {
+        return { ok: false, message: 'Password saat ini tidak sesuai.' };
+      }
+      if (updates.new_password.trim().length < 6) {
+        return { ok: false, message: 'Password baru minimal 6 karakter.' };
+      }
+    }
+
+    const updatedUser: User = {
+      ...currentUser,
+      full_name: updates.full_name ? updates.full_name.trim() : currentUser.full_name,
+      avatar_url: updates.avatar_url !== undefined ? updates.avatar_url : currentUser.avatar_url,
+      password: updates.new_password ? hashPassword(updates.new_password) : currentUser.password,
+    };
+
+    setDb((prev) => {
+      const nextUsers = prev.users.map((u) => (u.id === currentUser.id ? updatedUser : u));
+      return {
+        ...prev,
+        users: enforceSuperAdminLock(nextUsers),
+      };
+    });
+
+    syncRowInBackground('users', updatedUser);
+
+    return { ok: true, message: 'Profil berhasil diperbarui!' };
+  };
+
   const resetToSeedData = () => {
     setDb(INITIAL_SEED_DATA);
     localStorage.setItem(STORAGE_KEYS.DB_STATE, JSON.stringify(INITIAL_SEED_DATA));
@@ -952,6 +1000,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     system_balance_before: number;
     actual_bank_balance: number;
     reason: string;
+    tag?: string;
+    type?: 'addition' | 'deduction';
   }) => {
     if (!canManageBusinessAndProducts || !currentUser) return;
     const systemBefore = Number(input.system_balance_before || 0);
@@ -965,6 +1015,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       actual_bank_balance: actualBank,
       difference_amount: diff,
       reason: input.reason.trim() || 'Rekonsiliasi Saldo Bank',
+      tag: input.tag ? input.tag.trim() : undefined,
+      type: input.type || (diff >= 0 ? 'addition' : 'deduction'),
       created_by: currentUser.id,
       created_at: new Date().toISOString(),
     };
@@ -1005,6 +1057,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         switchDemoUser,
         requestForgotPassword,
         completePasswordSetup,
+        updateCurrentUserProfile,
         setSheetsWebhookUrl,
         pullFromGoogleSheets,
         pushAllToGoogleSheets,
