@@ -205,7 +205,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(() => {
-    return localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID) || SUPER_ADMIN_ID;
+    return localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID) || null;
   });
 
   const [sheetsWebhookUrl, setSheetsWebhookUrlState] = useState<string>(() => {

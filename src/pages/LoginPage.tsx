@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Lock,
@@ -20,8 +20,19 @@ import {
 } from '../components/Doodles';
 
 export const LoginPage: React.FC = () => {
-  const { db, loginWithEmail, requestForgotPassword } = useApp();
+  const { db, currentUser, loginWithEmail, requestForgotPassword } = useApp();
   const navigate = useNavigate();
+
+  // If already logged in, redirect to destination
+  useEffect(() => {
+    if (currentUser) {
+      if (currentUser.role === 'member') {
+        navigate('/transactions', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    }
+  }, [currentUser, navigate]);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
