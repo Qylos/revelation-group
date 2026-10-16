@@ -1,0 +1,22 @@
+services:
+  revelation-staging:
+    container_name: revelation_group_staging
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: revelation-group-staging:latest
+    ports:
+      - "127.0.0.1:3000:80"
+    restart: unless-stopped
+    networks:
+      - revelation_staging_net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/ > /dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+networks:
+  revelation_staging_net:
+    driver: bridge

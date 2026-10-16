@@ -422,3 +422,47 @@ Badge mengambang *"Powered by Netlify"* diinjeksi secara dinamis oleh Netlify Ed
    - Menampilkan hanya avatar foto profil lingkaran dan tombol Sign Out.
 3. **Perbaikan HPP:** Label *"Margin / Item"* dan perbaikan clipping daftar komponen HPP dengan kontainer scroll rapi.
 
+---
+
+## 12. DOKUMENTASI LINGKUNGAN DOCKER STAGING (`http://localhost:3000`)
+
+### A. Gambaran Umum & Kebijakan Isolasi
+Aplikasi Revelation Group kini memiliki container Docker staging mandiri yang terisolasi sepenuhnya:
+- **Nama Container:** `revelation_group_staging`
+- **Port Host:** `127.0.0.1:3000 -> 80` (Akses langsung di browser: `http://localhost:3000`)
+- **Status:** Sehat (*Healthy*) dan aktif berjalan.
+- **Isolasi Penuh:** Berjalan di dalam custom bridge network `revelation_staging_net`. Container lain di mesin host (seperti stack `genesismarketinguph`, Supabase, n8n, WAHA) sama sekali tidak terpengaruh atau tersentuh.
+
+### B. Berkas Konfigurasi
+1. **`Dockerfile` (Multi-Stage Build):**
+   - *Stage 1 (Builder):* Menggunakan `node:20-alpine` untuk melakukan `npm ci` dan `npm run build` menghasilkan folder `dist/`.
+   - *Stage 2 (Runner):* Menggunakan `nginx:alpine` super ringan untuk menyajikan file statis `dist/`.
+2. **`nginx.conf`:**
+   - Konfigurasi Nginx dengan kompresi Gzip, security headers, dan aturan fallback SPA `try_files $uri $uri/ /index.html;` sehingga route client-side seperti `/dashboard`, `/profile`, `/transactions` tidak akan pernah 404 saat di-refresh.
+3. **`docker-compose.staging.yml`:**
+   - File orkestrasi untuk mengelola siklus hidup container staging.
+4. **`.dockerignore`:**
+   - Mengecualikan `node_modules`, `dist`, `.git`, dan cache build agar transfer konteks ke Docker daemon berlangsung dalam hitungan detik.
+
+### C. Perintah Manajemen Docker Staging
+- **Menyalakan Staging:**
+  ```bash
+  docker compose -f docker-compose.staging.yml up -d
+  ```
+- **Melihat Status Container:**
+  ```bash
+  docker compose -f docker-compose.staging.yml ps
+  ```
+- **Melihat Log Nginx Real-time:**
+  ```bash
+  docker compose -f docker-compose.staging.yml logs -f
+  ```
+- **Membangun Ulang Image (Rebuild) Setelah Ada Perubahan Kode:**
+  ```bash
+  docker compose -f docker-compose.staging.yml up -d --build
+  ```
+- **Mematikan Container Staging:**
+  ```bash
+  docker compose -f docker-compose.staging.yml down
+  ```
+
