@@ -422,15 +422,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         message: 'Akun Anda sedang dinonaktifkan oleh Super Admin.',
       };
     }
-    if (password !== undefined && found.password) {
-      if (!verifyPassword(password, found.password)) {
+    const effectivePassword = found.password || hashPassword('revelation2026');
+    if (password !== undefined) {
+      if (!verifyPassword(password, effectivePassword)) {
         return {
           ok: false,
           message: 'Password tidak sesuai. Gunakan fitur Lupa Password jika lupa.',
         };
       }
-      // If legacy plaintext password, upgrade transparently to salted hash
-      if (found.password === password) {
+      // If legacy plaintext password or uninitialized, upgrade transparently to salted hash
+      if (!found.password || found.password === password) {
         const upgradedUser: User = {
           ...found,
           password: hashPassword(password),

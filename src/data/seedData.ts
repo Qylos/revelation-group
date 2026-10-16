@@ -1,4 +1,5 @@
 import { DatabaseState, SUPER_ADMIN_EMAIL, SUPER_ADMIN_ID } from '../types';
+import { hashPassword } from '../utils/security';
 
 function daysAgoDateString(daysAgo: number): string {
   const d = new Date();
@@ -17,6 +18,7 @@ export const INITIAL_SEED_DATA: DatabaseState = {
       full_name: 'David Calvin',
       role: 'super_admin',
       is_active: true,
+      password: hashPassword('revelation2026'),
       created_at: '2026-01-01T08:00:00.000Z',
     },
     {
@@ -25,6 +27,7 @@ export const INITIAL_SEED_DATA: DatabaseState = {
       full_name: 'Kevin Pratama',
       role: 'admin',
       is_active: true,
+      password: hashPassword('revelation2026'),
       created_at: '2026-01-02T09:00:00.000Z',
     },
     {
@@ -33,6 +36,7 @@ export const INITIAL_SEED_DATA: DatabaseState = {
       full_name: 'Nadia Kusuma',
       role: 'admin',
       is_active: true,
+      password: hashPassword('revelation2026'),
       created_at: '2026-01-02T09:30:00.000Z',
     },
     {
@@ -41,6 +45,7 @@ export const INITIAL_SEED_DATA: DatabaseState = {
       full_name: 'Budi Santoso',
       role: 'admin',
       is_active: true,
+      password: hashPassword('revelation2026'),
       created_at: '2026-01-03T10:00:00.000Z',
     },
     {
@@ -49,6 +54,7 @@ export const INITIAL_SEED_DATA: DatabaseState = {
       full_name: 'Clarissa Wijaya',
       role: 'admin',
       is_active: true,
+      password: hashPassword('revelation2026'),
       created_at: '2026-01-03T10:30:00.000Z',
     },
     {
@@ -57,6 +63,7 @@ export const INITIAL_SEED_DATA: DatabaseState = {
       full_name: 'Rina Lestari',
       role: 'member',
       is_active: true,
+      password: hashPassword('revelation2026'),
       created_at: '2026-01-05T08:00:00.000Z',
     },
     {
@@ -65,6 +72,7 @@ export const INITIAL_SEED_DATA: DatabaseState = {
       full_name: 'Dimas Saputra',
       role: 'member',
       is_active: true,
+      password: hashPassword('revelation2026'),
       created_at: '2026-01-06T08:00:00.000Z',
     },
   ],
