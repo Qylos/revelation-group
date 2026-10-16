@@ -577,28 +577,13 @@ export const GlobalDashboardPage: React.FC = () => {
       {/* Editorial Hero Header & Dynamic Business Selector + Date Filter Bar */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
         <div>
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="font-serif font-extrabold text-3xl sm:text-4xl text-cobalt tracking-tight flex items-center gap-3">
-              <span>{selectedBiz ? selectedBiz.name : 'Global Dashboard'}</span>
-              <DoodleStar
-                className="w-7 h-7 shrink-0"
-                color={selectedBiz?.card_accent_color || '#FDE047'}
-              />
-            </h1>
-
-            {/* Pilihan Bisnis di Samping Title */}
-            <div className="w-[185px] sm:w-[220px]">
-              <CustomSelect
-                size="sm"
-                value={selectedBusinessId}
-                onChange={(val) => setSelectedBusinessId(val)}
-                options={businessOptions}
-                className="w-full"
-                buttonClassName="bg-surface hover:border-cobalt text-ink border-ink/20 shadow-sm text-xs font-bold"
-                menuClassName="min-w-[240px]"
-              />
-            </div>
-          </div>
+          <h1 className="font-serif font-extrabold text-3xl sm:text-4xl text-cobalt tracking-tight flex items-center gap-3">
+            <span>{selectedBiz ? selectedBiz.name : 'Global Dashboard'}</span>
+            <DoodleStar
+              className="w-7 h-7 shrink-0"
+              color={selectedBiz?.card_accent_color || '#FDE047'}
+            />
+          </h1>
 
           <p className="text-sm text-ink/70 mt-1.5 leading-relaxed">
             {selectedBiz ? (
@@ -617,20 +602,37 @@ export const GlobalDashboardPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Single-Line Date Range Filter Bar + Pilih Tanggal Popover */}
-        <DashboardDateFilterBar
-          dateRange={dateRange}
-          onSelectPreset={(preset) => setDateRange(preset)}
-          customStartDate={customStartDate}
-          customEndDate={customEndDate}
-          isRangeMode={isCustomRangeMode}
-          onChangeCustomDates={(start, end, rangeMode) => {
-            setCustomStartDate(start);
-            setCustomEndDate(end);
-            setIsCustomRangeMode(rangeMode);
-          }}
-          variant="surface"
-        />
+        {/* Right Section: Business Selector (Flush Right with All Time) + Date Filter Bar */}
+        <div className="flex flex-col items-start lg:items-end gap-2.5">
+          {/* Pilihan Bisnis di Kanan Sejajar All Time */}
+          <div className="w-[195px] sm:w-[225px]">
+            <CustomSelect
+              size="sm"
+              align="right"
+              value={selectedBusinessId}
+              onChange={(val) => setSelectedBusinessId(val)}
+              options={businessOptions}
+              className="w-full"
+              buttonClassName="bg-surface hover:border-cobalt text-ink border-ink/20 shadow-sm text-xs font-bold"
+              menuClassName="min-w-[240px]"
+            />
+          </div>
+
+          {/* Single-Line Date Range Filter Bar + Pilih Tanggal Popover */}
+          <DashboardDateFilterBar
+            dateRange={dateRange}
+            onSelectPreset={(preset) => setDateRange(preset)}
+            customStartDate={customStartDate}
+            customEndDate={customEndDate}
+            isRangeMode={isCustomRangeMode}
+            onChangeCustomDates={(start, end, rangeMode) => {
+              setCustomStartDate(start);
+              setCustomEndDate(end);
+              setIsCustomRangeMode(rangeMode);
+            }}
+            variant="surface"
+          />
+        </div>
       </div>
 
       {selectedBiz && bizSummary ? (

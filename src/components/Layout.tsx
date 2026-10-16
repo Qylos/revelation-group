@@ -6,14 +6,10 @@ import {
   Package,
   Receipt,
   ShieldCheck,
-  Cloud,
-  RefreshCw,
   LogOut,
-  Download,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { DoodleSparkle, WavyCoralUnderline } from './Doodles';
-import { exportDatabaseToExcel } from '../services/googleSheetsService';
 import { IosInstallPrompt } from './IosInstallPrompt';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -22,10 +18,6 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     currentUser,
     isSuperAdmin,
     canManageBusinessAndProducts,
-    sheetsWebhookUrl,
-    isSyncing,
-    lastSyncTime,
-    pullFromGoogleSheets,
     logout,
   } = useApp();
   const location = useLocation();
@@ -117,137 +109,71 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               </div>
             </Link>
 
-            {/* Right Controls: [Super Admin Only: Export Excel & Sheets Live] + [Semua Bisnis] + [Profile] */}
-            <div className="flex items-center gap-1.5 sm:gap-2.5">
-              {/* Export Excel & Sheets Live — ONLY visible to Super Admin */}
-              {isSuperAdmin && (
-                <>
-                  <button
-                    onClick={() => exportDatabaseToExcel(db)}
-                    title="Download / Export Database ke File Excel (.xls)"
-                    className="hidden lg:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-profit-bg text-profit-text border border-profit-accent text-xs font-bold hover:brightness-95 transition whitespace-nowrap"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Export Excel</span>
-                  </button>
+            {/* Center: Simple Text-Only Navigation ("yang simple cuma kata-kata saja") */}
+            <nav className="hidden md:flex items-center gap-5 lg:gap-8">
+              {navItems.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={(e) => {
+                    if (item.isActive) {
+                      e.preventDefault();
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                  className={`text-sm tracking-tight transition-all relative py-1 cursor-pointer select-none whitespace-nowrap ${
+                    item.isActive
+                      ? 'font-extrabold text-ink after:content-[""] after:absolute after:-bottom-1 after:left-0 after:right-0 after:h-[2px] after:bg-ink after:rounded-full'
+                      : 'font-semibold text-ink/65 hover:text-ink'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
 
-                  {sheetsWebhookUrl ? (
-                    <button
-                      onClick={() => pullFromGoogleSheets()}
-                      disabled={isSyncing}
-                      title={`Google Sheets Terhubung${
-                        lastSyncTime ? ` (Sync: ${lastSyncTime})` : ''
-                      }. Klik untuk refresh data.`}
-                      className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-pastel-blue/70 hover:bg-pastel-blue text-cobalt text-xs font-bold border border-cobalt/20 transition whitespace-nowrap"
-                    >
-                      <RefreshCw
-                        className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`}
-                      />
-                      <span>{isSyncing ? 'Syncing...' : 'Sheets Live'}</span>
-                    </button>
-                  ) : (
-                    <Link
-                      to="/super-admin"
-                      title="Hubungkan Google Sheets Real-Time Database"
-                      className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface border border-dashed border-ink/30 text-xs font-semibold text-ink/70 hover:border-cobalt hover:text-cobalt transition whitespace-nowrap"
-                    >
-                      <Cloud className="w-3.5 h-3.5" />
-                      <span>Sheets Live</span>
-                    </Link>
-                  )}
-                </>
-              )}
-
-              {/* Profile Pill (Navigates to /profile) + Logout */}
+            {/* Right Controls: ID diganti profile picture saja (nama ga usah) + Sign Out */}
+            <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
               {currentUser && (
-                <div className="flex items-center gap-1.5 sm:gap-2">
+                <>
+                  {/* Circular Profile Picture Only */}
                   <Link
                     to="/profile"
-                    title="Buka Profil & Pengaturan Akun"
-                    className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-full bg-pastel-yellow hover:bg-pastel-yellow/80 border-2 border-ink text-ink shadow-[2px_2px_0px_rgba(17,24,39,1)] hover:shadow-none hover:translate-x-[1px] hover:translate-y-[1px] transition-all cursor-pointer select-none group"
+                    title={`Profil: ${currentUser.full_name} (${currentUser.role.toUpperCase()})`}
+                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-pastel-yellow border-2 border-ink shadow-[2px_2px_0px_rgba(17,24,39,1)] hover:shadow-none hover:translate-x-[1px] hover:translate-y-[1px] transition-all cursor-pointer flex items-center justify-center shrink-0 group"
                   >
-                    {/* User Avatar or Initials */}
-                    <div className="w-6 h-6 rounded-full overflow-hidden bg-ink text-pastel-yellow flex items-center justify-center text-[10px] font-black shrink-0 border border-ink/20">
-                      {currentUser.avatar_url ? (
-                        <img
-                          src={currentUser.avatar_url}
-                          alt={currentUser.full_name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span>
-                          {currentUser.full_name
-                            .split(' ')
-                            .map((n) => n[0])
-                            .slice(0, 2)
-                            .join('')
-                            .toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-
-                    <span className="text-xs font-extrabold text-ink group-hover:text-cobalt transition truncate max-w-[85px] sm:max-w-[130px]">
-                      {currentUser.full_name}
-                    </span>
-
-                    <span className="hidden sm:inline-block text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full bg-surface/90 border border-ink/20 text-ink/80 tracking-wider">
-                      {currentUser.role === 'super_admin'
-                        ? 'SUPER'
-                        : currentUser.role === 'admin'
-                        ? 'PARTNER'
-                        : 'MEMBER'}
-                    </span>
+                    {currentUser.avatar_url ? (
+                      <img
+                        src={currentUser.avatar_url}
+                        alt={currentUser.full_name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-xs sm:text-sm font-black text-ink">
+                        {currentUser.full_name
+                          .split(' ')
+                          .map((n) => n[0])
+                          .slice(0, 2)
+                          .join('')
+                          .toUpperCase()}
+                      </span>
+                    )}
                   </Link>
 
+                  {/* Sign Out Button */}
                   <button
                     onClick={() => {
                       logout();
                       navigate('/login');
                     }}
                     title="Keluar / Sign Out dari Akun"
-                    className="p-2 rounded-full bg-surface border border-ink/15 hover:bg-loss-bg hover:text-loss-text hover:border-loss-accent transition cursor-pointer"
+                    className="p-2 sm:p-2.5 rounded-full bg-surface border border-ink/15 hover:bg-loss-bg hover:text-loss-text hover:border-loss-accent transition cursor-pointer"
                   >
                     <LogOut className="w-4 h-4" />
                   </button>
-                </div>
+                </>
               )}
             </div>
-          </div>
-
-          {/* Desktop Navigation Bar — MODEL 3: Pastel Editorial Folder Tabs */}
-          <div className="hidden md:block pt-2">
-            <nav className="flex items-end gap-2 relative z-10 px-1">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={(e) => {
-                      if (item.isActive) {
-                        e.preventDefault();
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }
-                    }}
-                    className={`px-5 py-2.5 rounded-t-2xl text-xs sm:text-sm font-extrabold flex items-center gap-2 transition-all select-none cursor-pointer ${
-                      item.isActive
-                        ? 'bg-pastel-yellow text-ink border-t-2 border-x-2 border-ink shadow-[2px_-2px_0px_rgba(17,24,39,0.08)] relative -mb-[2px] pb-[12px] z-20'
-                        : 'bg-cream/80 hover:bg-pastel-lavender/40 text-ink/70 hover:text-ink border-t-2 border-x-2 border-pastel-lavender'
-                    }`}
-                  >
-                    <Icon
-                      className={`w-4 h-4 ${
-                        item.isActive ? 'text-ink' : 'text-ink/50'
-                      }`}
-                    />
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-            {/* Continuous Folder Baseline (Dark line + Pastel Yellow bar) */}
-            <div className="h-[2px] bg-ink w-full relative z-10" />
-            <div className="h-1.5 bg-pastel-yellow w-full" />
           </div>
         </div>
       </header>

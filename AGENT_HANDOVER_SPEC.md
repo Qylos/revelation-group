@@ -361,8 +361,8 @@ Badge mengambang *"Powered by Netlify"* diinjeksi secara dinamis oleh Netlify Ed
 ### A. Modul Profil Pengguna & Avatar Cropper (`/profile`)
 1. **Pembaruan Top Bar (`src/components/Layout.tsx`):**
    - Menghapus dropdown demo switcher akun di header dan mobile bar agar otentikasi aman dan tidak sembarang orang bisa berganti akun.
-   - Menggantinya dengan **Profile Button Pill** yang menampilkan foto avatar pengguna / inisial nama, nama lengkap, badge role, serta tombol **Keluar (Sign Out)**.
-   - Mengklik pill profil mengarahkan pengguna ke halaman `/profile`.
+   - **Tombol Profil Avatar Saja:** Sesuai permintaan terbaru, tombol profil di top bar disederhanakan menjadi **hanya foto profil (lingkaran avatar)** tanpa teks nama lengkap atau badge role, berdampingan dengan tombol Sign Out bersih.
+   - Mengklik avatar profil mengarahkan pengguna ke halaman `/profile`.
 
 2. **Halaman Profil Mandiri (`src/pages/ProfilePage.tsx`):**
    - **Ganti Foto Profil:**
@@ -375,8 +375,10 @@ Badge mengambang *"Powered by Netlify"* diinjeksi secara dinamis oleh Netlify Ed
    - **Tombol Sign Out / Keluar:** Menghapus sesi login dan mengarahkan kembali ke `/login`.
 
 ### B. Business Switcher di Header Dashboard & Tampilan Dinamis (`src/pages/GlobalDashboardPage.tsx`)
-1. **Pemindahan Pemilih Bisnis:**
-   - Dropdown *"Semua Bisnis"* dipindahkan dari top navigation bar ke samping judul Dashboard, tepat di atas bilah filter tanggal.
+1. **Posisi Pemilih Bisnis (Right-Aligned di atas All Time):**
+   - Dropdown pemilih bisnis ("Semua Bisnis" / Unit Bisnis terpilih) diposisikan di **sisi kanan**, tepat di atas bilah filter tanggal, dan tepi kanannya sejajar (*flush right*) dengan tombol *"All Time"*.
+   - Ketika pengguna memilih unit bisnis tertentu, dropdown tersebut **tetap *stay* di posisi kanan atas** (menampilkan nama bisnis yang aktif atau kembali ke Semua Bisnis).
+   - Judul di sisi kiri murni menampilkan nama bisnis terpilih / *"Global Dashboard"* beserta deskripsinya tanpa terpotong atau terdesak oleh dropdown.
 2. **Perubahan View Dinamis:**
    - **Mode "Semua Bisnis" (GLOBAL):** Menampilkan Laporan Konsolidasi Global (Kas Rekening Bank Bersama, 3 Kartu Ringkasan Global, Tabel Performa Antar Bisnis & Pos R&D, serta Grafik Perbandingan).
    - **Mode Unit Bisnis Terpilih:**
@@ -410,9 +412,13 @@ Badge mengambang *"Powered by Netlify"* diinjeksi secara dinamis oleh Netlify Ed
      - Tabel komprehensif seluruh tag beserta frekuensi, total penambahan (+), total pengurangan (-), dan dampak bersih (Net).
    - **Tab 4: Riwayat Log Audit:** Daftar riwayat rekonsiliasi yang mencatat tanggal, selisih, tag, alasan, nama pembuat, dan tombol hapus catatan.
 
-### E. Perbaikan Tampilan & Navigasi Lainnya
-1. **Scroll-to-Top:** Mengklik tab navigasi yang sedang aktif di top bar otomatis melakukan smooth scroll ke puncak halaman.
-2. **Label Margin HPP:** Mengubah label *"Margin (Rp)"* menjadi *"Margin / Item"* di halaman Produk & HPP.
-3. **Container Komponen HPP:** Memperbaiki clipping teks pada daftar komponen HPP dengan kontainer scroll yang rapi (`revelation-scroll`).
-4. **Pembersihan Navigasi HPP:** Menghapus tautan usang *"← Ke Dashboard ..."* dan merapikan posisi selektor bisnis ke kanan.
+### E. Redesain Navigasi Header & Pembersihan Tombol
+1. **Navigasi Simpel Teks di Header:**
+   - Folder tabs tebal dan baseline kuning-hitam di bawah header dihapus.
+   - Menu navigasi dipindahkan langsung ke **dalam satu baris header utama** dengan desain simpel murni kata-kata (*clean text navigation*): `Global Dashboard`, `Input Transaksi`, `Kelola Bisnis`, `Produk & HPP`, `Super Admin`.
+   - Mengklik tab yang aktif otomatis melakukan smooth scroll ke puncak halaman.
+2. **Pembersihan Tombol Top-Right:**
+   - Menghapus tombol *Export Excel* dan *Sheets Live* dari header agar tampilan sangat ramping dan fokus.
+   - Menampilkan hanya avatar foto profil lingkaran dan tombol Sign Out.
+3. **Perbaikan HPP:** Label *"Margin / Item"* dan perbaikan clipping daftar komponen HPP dengan kontainer scroll rapi.
 
