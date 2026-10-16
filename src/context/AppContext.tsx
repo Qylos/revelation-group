@@ -131,12 +131,14 @@ function enforceSuperAdminLock(users: User[]): User[] {
   );
   const normalized = users.map((u) => {
     const cleanName = stripParenthesesFromName(u.full_name);
+    const pwd = u.password || hashPassword('revelation2026');
     if (u.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()) {
       return {
         ...u,
         full_name: cleanName || 'David Calvin',
         role: 'super_admin' as UserRole,
         is_active: true,
+        password: pwd,
       };
     }
     if (u.role === 'super_admin') {
@@ -144,11 +146,13 @@ function enforceSuperAdminLock(users: User[]): User[] {
         ...u,
         full_name: cleanName,
         role: 'admin' as UserRole,
+        password: pwd,
       };
     }
     return {
       ...u,
       full_name: cleanName,
+      password: pwd,
     };
   });
 
@@ -159,6 +163,7 @@ function enforceSuperAdminLock(users: User[]): User[] {
       full_name: 'David Calvin',
       role: 'super_admin',
       is_active: true,
+      password: hashPassword('revelation2026'),
       created_at: new Date().toISOString(),
     });
   }
