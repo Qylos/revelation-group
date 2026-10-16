@@ -131,3 +131,32 @@
   scrollbar-width: none;
 }
 
+/* ============================================================================
+ * NETLIFY HUD / BADGE SUPPRESSOR
+ * Menutupi dan menyembunyikan badge "Powered by Netlify" yang diinjeksi Edge
+ * ============================================================================ */
+#nl-badge-frame,
+iframe[title*="Netlify"],
+iframe[src*="netlify"],
+iframe[id^="nl-badge"],
+.nl-wrap,
+.nl-badge,
+.nl-card,
+.nl-popover,
+.nl-mini,
+.nl-bar {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  max-width: 0 !important;
+  max-height: 0 !important;
+  position: absolute !important;
+  left: -99999px !important;
+  top: -99999px !important;
+  clip-path: path("M0 0Z") !important;
+  z-index: -999999 !important;
+}
+

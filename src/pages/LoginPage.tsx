@@ -8,9 +8,6 @@ import {
   CheckCircle2,
   X,
   Send,
-  Layers,
-  ShieldCheck,
-  Sparkles,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import {
@@ -114,21 +111,8 @@ export const LoginPage: React.FC = () => {
       </div>
 
       <div className="max-w-md w-full mx-auto relative z-10">
-        {/* Editorial Brand Emblem & Heading */}
+        {/* Editorial Heading */}
         <div className="text-center mb-7">
-          <div className="inline-flex items-center justify-center mb-4">
-            <div className="w-14 h-14 rounded-2xl bg-cobalt border-2 border-ink shadow-[4px_4px_0px_#111827] flex items-center justify-center text-white font-serif font-extrabold text-2xl -rotate-3 relative">
-              R
-              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-pastel-yellow border-2 border-ink" />
-            </div>
-          </div>
-
-          <div>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-pastel-lavender/90 border border-ink/15 text-ink text-xs font-extrabold mb-3 shadow-sm">
-              <span>✨ REVELATION GROUP • MULTI-BUSINESS PORTAL v1.2.0</span>
-            </div>
-          </div>
-
           <h1 className="font-serif font-extrabold text-4xl sm:text-5xl text-cobalt tracking-tight relative inline-block">
             Welcome Back!
             <span className="block w-40 mx-auto mt-1">
@@ -233,28 +217,6 @@ export const LoginPage: React.FC = () => {
                   </button>
                 </div>
               </form>
-
-              {/* Subtle Editorial Feature Highlights Footer */}
-              <div className="mt-6 pt-5 border-t border-dashed border-ink/15 grid grid-cols-3 gap-2 text-center">
-                <div className="p-2 rounded-xl bg-pastel-blue/40 border border-ink/10">
-                  <Layers className="w-3.5 h-3.5 text-cobalt mx-auto mb-0.5" />
-                  <span className="text-[10px] font-extrabold text-ink/80 block leading-tight">
-                    Multi-Bisnis
-                  </span>
-                </div>
-                <div className="p-2 rounded-xl bg-pastel-yellow/45 border border-ink/10">
-                  <Sparkles className="w-3.5 h-3.5 text-ink mx-auto mb-0.5" />
-                  <span className="text-[10px] font-extrabold text-ink/80 block leading-tight">
-                    Kalkulator HPP
-                  </span>
-                </div>
-                <div className="p-2 rounded-xl bg-pastel-lavender/50 border border-ink/10">
-                  <ShieldCheck className="w-3.5 h-3.5 text-cobalt mx-auto mb-0.5" />
-                  <span className="text-[10px] font-extrabold text-ink/80 block leading-tight">
-                    Akses Aman
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
         </div>

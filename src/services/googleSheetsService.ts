@@ -1,15 +1,31 @@
 import { DatabaseState, SUPER_ADMIN_EMAIL } from '../types';
+import { sanitizeExcelValue } from '../utils/security';
 
 export const STORAGE_KEYS = {
   DB_STATE: 'revelation_group_db_v1',
   CURRENT_USER_ID: 'revelation_group_user_id_v1',
   SHEETS_WEBHOOK_URL: 'revelation_group_sheets_url_v1',
+  SHEETS_API_KEY: 'revelation_group_sheets_api_key_v1',
   LAST_SYNC_TIME: 'revelation_group_last_sync_v1',
 };
 
-export async function fetchFromGoogleSheets(webhookUrl: string): Promise<DatabaseState | null> {
+export async function fetchFromGoogleSheets(
+  webhookUrl: string,
+  apiKey?: string
+): Promise<DatabaseState | null> {
   if (!webhookUrl || !webhookUrl.startsWith('http')) return null;
-  const response = await fetch(webhookUrl, {
+  let finalUrl = webhookUrl;
+  if (apiKey && apiKey.trim()) {
+    try {
+      const parsed = new URL(webhookUrl);
+      parsed.searchParams.set('key', apiKey.trim());
+      finalUrl = parsed.toString();
+    } catch {
+      finalUrl = webhookUrl + (webhookUrl.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(apiKey.trim());
+    }
+  }
+
+  const response = await fetch(finalUrl, {
     method: 'GET',
     headers: { Accept: 'application/json' },
   });
@@ -20,21 +36,26 @@ export async function fetchFromGoogleSheets(webhookUrl: string): Promise<Databas
   if (result && result.status === 'ok' && result.data) {
     return result.data as DatabaseState;
   }
+  if (result && result.status === 'error') {
+    throw new Error(result.message || 'Gagal memuat data dari Google Sheets');
+  }
   return null;
 }
 
 export async function postToGoogleSheets(
   webhookUrl: string,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  apiKey?: string
 ): Promise<boolean> {
   if (!webhookUrl || !webhookUrl.startsWith('http')) return false;
   try {
+    const finalPayload = apiKey && apiKey.trim() ? { ...payload, apiKey: apiKey.trim() } : payload;
     const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'text/plain;charset=utf-8',
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(finalPayload),
     });
     if (!response.ok) return false;
     const res = await response.json();
@@ -48,8 +69,9 @@ export async function postToGoogleSheets(
 export function exportDatabaseToExcel(db: DatabaseState): void {
   const escapeXml = (val: unknown): string => {
     if (val === null || val === undefined) return '';
-    const str = typeof val === 'object' ? JSON.stringify(val) : String(val);
-    return str
+    // Formula injection defense (sanitize =, +, -, @)
+    const sanitized = sanitizeExcelValue(val);
+    return sanitized
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
@@ -122,16 +144,20 @@ export function exportDatabaseToExcel(db: DatabaseState): void {
 }
 
 export const APPS_SCRIPT_TEMPLATE = `// ============================================================================
-// REVELATION GROUP — GOOGLE SHEETS REAL-TIME DATABASE (Apps Script)
+// REVELATION GROUP — SECURE GOOGLE SHEETS REAL-TIME DATABASE (Apps Script)
 // Akun Owner / Super Admin: ${SUPER_ADMIN_EMAIL}
 // ============================================================================
+// PANDUAN DEPLOY:
 // 1. Buat Google Sheets baru di akun ${SUPER_ADMIN_EMAIL} (https://sheets.new)
 // 2. Klik menu Extensions -> Apps Script, ganti isi Code.gs dengan kode ini
-// 3. Klik Deploy -> New deployment -> pilih type "Web app"
-// 4. Execute as: "Me (${SUPER_ADMIN_EMAIL})" | Who has access: "Anyone"
-// 5. Copy Web App URL dan tempel di halaman Super Admin Revelation Group!
+// 3. Konfigurasi API Secret Key (default: 'rev_secret_revelation_2026' atau sesuaikan)
+// 4. Klik Deploy -> New deployment -> pilih type "Web app"
+// 5. Execute as: "Me (${SUPER_ADMIN_EMAIL})" | Who has access: "Anyone"
+// 6. Copy Web App URL dan tempel di halaman Super Admin Revelation Group!
 
 const SUPER_ADMIN_EMAIL = '${SUPER_ADMIN_EMAIL}';
+const DEFAULT_API_SECRET = 'rev_secret_revelation_2026';
+
 const SCHEMAS = {
   users: ['id', 'email', 'full_name', 'role', 'is_active', 'password', 'invite_token', 'invite_expires_at', 'created_at'],
   businesses: ['id', 'name', 'description', 'logo_url', 'card_accent_color', 'is_archived', 'created_by', 'created_at'],
@@ -141,6 +167,22 @@ const SCHEMAS = {
   bank_settings: ['id', 'bank_name', 'opening_balance', 'opening_date', 'updated_by', 'updated_at'],
   balance_adjustments: ['id', 'adjustment_date', 'system_balance_before', 'actual_bank_balance', 'difference_amount', 'reason', 'created_by', 'created_at']
 };
+
+function getApiSecret() {
+  try {
+    const prop = PropertiesService.getScriptProperties().getProperty('API_SECRET');
+    if (prop && prop.trim()) return prop.trim();
+  } catch (err) {}
+  return DEFAULT_API_SECRET;
+}
+
+function isAuthorized(e, payload) {
+  const secret = getApiSecret();
+  if (!secret) return true;
+  if (e && e.parameter && e.parameter.key === secret) return true;
+  if (payload && (payload.apiKey === secret || payload.key === secret)) return true;
+  return false;
+}
 
 function ensureSheetsInitialized() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -163,7 +205,7 @@ function sheetToObjects(name) {
   if (!s || s.getLastRow() <= 1) return [];
   const data = s.getDataRange().getValues();
   const headers = data[0];
-  return data.slice(1).filter(function(r) { return r[0] !== ''; }).map(function(row) {
+  return data.slice(1).filter(function(r) { return r[0] !== '' && r[0] !== null; }).map(function(row) {
     const obj = {};
     headers.forEach(function(h, i) {
       let v = row[i];
@@ -211,7 +253,14 @@ function deleteRowFromSheet(name, id) {
   if (idx !== -1) s.deleteRow(idx + 2);
 }
 
-function doGet() {
+function doGet(e) {
+  if (!isAuthorized(e, null)) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: 'error',
+      message: 'Unauthorized: Invalid or missing API Key.'
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
   ensureSheetsInitialized();
   const bankRows = sheetToObjects('bank_settings');
   return ContentService.createTextOutput(JSON.stringify({
@@ -235,6 +284,14 @@ function doPost(e) {
   try {
     ensureSheetsInitialized();
     const b = JSON.parse(e.postData.contents);
+
+    if (!isAuthorized(e, b)) {
+      return ContentService.createTextOutput(JSON.stringify({
+        status: 'error',
+        message: 'Unauthorized: Invalid or missing API Key.'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     if (b.action === 'syncAll' && b.data) {
       Object.keys(SCHEMAS).forEach(function(k) {
         if (k === 'bank_settings' && b.data.bank_settings) {
@@ -256,10 +313,19 @@ function doPost(e) {
         body: 'Halo ' + (b.fullName || '') + ',\\n\\nAnda telah diundang oleh ' + SUPER_ADMIN_EMAIL + ' ke Portal Revelation Group.\\n\\nPassword Lama (Sementara): ' + b.tempPassword + '\\nKlik link berikut (berlaku HANYA 5 MENIT) untuk memasukkan Password Lama & Password Baru:\\n' + b.inviteLink
       });
     } else if (b.action === 'sendForgotPasswordEmail') {
+      // Open Email Relay Defense: verify recipient exists in registered users
+      const users = sheetToObjects('users');
+      const targetUser = users.find(function(u) { return u.email && u.email.toLowerCase() === String(b.to).toLowerCase(); });
+      if (!targetUser) {
+        return ContentService.createTextOutput(JSON.stringify({
+          status: 'error',
+          message: 'User email not found in registered accounts.'
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
       MailApp.sendEmail({
         to: b.to,
         subject: 'Informasi Password Akses — Revelation Group',
-        body: 'Halo ' + (b.fullName || '') + ',\\n\\nPassword akses Anda untuk Portal Revelation Group adalah: ' + b.password
+        body: 'Halo ' + (b.fullName || targetUser.full_name || '') + ',\\n\\nPassword akses Anda untuk Portal Revelation Group adalah: ' + b.password + '\\n\\nSilakan gunakan password tersebut untuk Login.\\n\\nSalam,\\nRevelation Group (' + SUPER_ADMIN_EMAIL + ')'
       });
     }
     return ContentService.createTextOutput(JSON.stringify({ status: 'ok' })).setMimeType(ContentService.MimeType.JSON);

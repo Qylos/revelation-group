@@ -16,6 +16,9 @@ import {
   Clock,
   ExternalLink,
   X,
+  Eye,
+  EyeOff,
+  Key,
 } from 'lucide-react';
 import { InviteUserResult, useApp } from '../context/AppContext';
 import { SUPER_ADMIN_EMAIL, User } from '../types';
@@ -43,10 +46,12 @@ export const SuperAdminPage: React.FC = () => {
     currentUser,
     isSuperAdmin,
     sheetsWebhookUrl,
+    sheetsApiKey,
     isSyncing,
     lastSyncTime,
     syncStatusMessage,
     setSheetsWebhookUrl,
+    setSheetsApiKey,
     pullFromGoogleSheets,
     pushAllToGoogleSheets,
     inviteOrAddUser,
@@ -57,6 +62,8 @@ export const SuperAdminPage: React.FC = () => {
   const [newFullName, setNewFullName] = useState('');
   const [newRole, setNewRole] = useState<'admin' | 'member'>('admin');
   const [urlInput, setUrlInput] = useState(sheetsWebhookUrl);
+  const [apiKeyInput, setApiKeyInput] = useState(sheetsApiKey);
+  const [showApiKey, setShowApiKey] = useState(false);
   const [copiedScript, setCopiedScript] = useState(false);
   const [showScriptCode, setShowScriptCode] = useState(false);
   const [inviteModalData, setInviteModalData] = useState<InviteUserResult | null>(null);
@@ -103,8 +110,9 @@ export const SuperAdminPage: React.FC = () => {
   const handleSaveAndSyncSheets = async (e: React.FormEvent) => {
     e.preventDefault();
     setSheetsWebhookUrl(urlInput);
+    setSheetsApiKey(apiKeyInput);
     if (urlInput.trim()) {
-      await pullFromGoogleSheets(urlInput.trim());
+      await pullFromGoogleSheets(urlInput.trim(), apiKeyInput.trim());
     }
   };
 
@@ -172,27 +180,63 @@ export const SuperAdminPage: React.FC = () => {
                 <strong className="text-cobalt">{SUPER_ADMIN_EMAIL}</strong> sebagai database cloud real-time gratis (Rp 0) untuk seluruh Partner Admin dan Member.
               </p>
 
-              <form onSubmit={handleSaveAndSyncSheets} className="space-y-3">
-                <label className="block text-xs font-extrabold uppercase tracking-wider text-ink/70">
-                  Google Apps Script Web App URL (Berakhiran /exec)
-                </label>
-                <div className="flex flex-col sm:flex-row gap-2">
+              <form onSubmit={handleSaveAndSyncSheets} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-extrabold uppercase tracking-wider text-ink/70 mb-1">
+                    Google Apps Script Web App URL (Berakhiran /exec)
+                  </label>
                   <input
                     type="url"
                     value={urlInput}
                     onChange={(e) => setUrlInput(e.target.value)}
                     placeholder="https://script.google.com/macros/s/AKfycb.../exec"
-                    className="flex-1 px-4 py-2.5 rounded-xl bg-cream/70 border border-ink/20 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-cobalt"
+                    className="w-full px-4 py-2.5 rounded-xl bg-cream/70 border border-ink/20 text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-cobalt"
                   />
-                  <button
-                    type="submit"
-                    disabled={isSyncing}
-                    className="px-5 py-2.5 rounded-full bg-ink hover:bg-cobalt text-white text-xs font-bold flex items-center justify-center gap-1.5 shrink-0 transition"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                    <span>Simpan & Hubungkan ↗</span>
-                  </button>
                 </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-ink/70">
+                      <Key className="w-3.5 h-3.5 text-cobalt" />
+                      <span>API Secret Key (Keamanan Google Sheets Endpoint)</span>
+                    </label>
+                    <span className="text-[10px] text-profit-text bg-pastel-green px-2 py-0.5 rounded-md font-bold">
+                      Anti-Hacker Hardening
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showApiKey ? 'text' : 'password'}
+                      value={apiKeyInput}
+                      onChange={(e) => setApiKeyInput(e.target.value)}
+                      placeholder="Masukkan Secret Key (contoh: rev_secret_revelation_2026)"
+                      className="w-full pl-4 pr-10 py-2.5 rounded-xl bg-cream/70 border border-ink/20 text-xs sm:text-sm font-semibold font-mono focus:outline-none focus:ring-2 focus:ring-cobalt"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-ink/50 hover:text-ink"
+                    >
+                      {showApiKey ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                  <p className="mt-1 text-[11px] text-ink/60">
+                    Kunci rahasia ini memastikan hanya Web App resmi yang dapat membaca atau menulis ke spreadsheet Anda.
+                  </p>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSyncing}
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-full bg-ink hover:bg-cobalt text-white text-xs font-bold flex items-center justify-center gap-1.5 shrink-0 transition"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span>Simpan & Hubungkan ↗</span>
+                </button>
               </form>
 
               {sheetsWebhookUrl && (

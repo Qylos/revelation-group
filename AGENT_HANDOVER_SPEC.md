@@ -270,3 +270,88 @@ Aplikasi telah dikonfigurasi penuh agar saat dibuka di **iPhone (Safari)** dapat
    - Otomatis mendeteksi perangkat iOS di Safari browser (bukan standalone).
    - Menampilkan popup panduan praktis 3 langkah: Ketuk tombol **Bagikan (Share)** -> Pilih **Tambah ke Layar Utama (Add to Home Screen)** -> Ketuk **Tambah (Add)**.
 
+---
+
+## 8. Cyber Security Hardening & Perlindungan Hacker
+
+Aplikasi telah diperkuat dengan arsitektur pertahanan siber menyeluruh:
+
+1. **Autentikasi API Secret Key (Google Apps Script Endpoint):**
+   - `google-apps-script/Code.gs` dan `src/services/googleSheetsService.ts` dilindungi oleh token otentikasi rahasia (`API_SECRET`).
+   - Setiap panggilan `GET` wajib menyertakan parameter `?key=...` dan panggilan `POST` wajib menyertakan `apiKey: "..."`.
+   - Permintaan tanpa token yang cocok akan langsung ditolak (`HTTP 401 Unauthorized`), mencegah pihak asing membaca atau merusak spreadsheet Revelation Group.
+   - Kunci rahasia dapat dikonfigurasi langsung oleh Super Admin di menu **Super Admin > Integrasi Google Sheets**.
+
+2. **Pengamanan Password Pengguna (Salted SHA-256):**
+   - File `src/utils/security.ts` mengimplementasikan fungsi kriptografi SHA-256 murni zero-dependency.
+   - Password disimpan dalam bentuk hash terenkripsi dengan salt aplikasi (`rev_secure_salt_v1_`), bukan teks polos (*plaintext*).
+   - Mendukung migrasi transparan: pengguna dengan password lama akan otomatis di-upgrade ke salted hash saat login berikutnya.
+
+3. **Pencegahan Open Email Relay di Apps Script:**
+   - Aksi `sendForgotPasswordEmail` di `Code.gs` memverifikasi terlebih dahulu apakah email penerima benar-benar terdaftar di lembar kerja `users`.
+   - Menutup celah penyerang menggunakan webhook Google Apps Script sebagai server pengirim spam/phishing massal.
+
+4. **Mitigasi CSV / Excel Formula Injection (DDE):**
+   - Pada fitur Export Excel (`exportDatabaseToExcel`), seluruh data string yang berawalan karakter formula bahaya (`=`, `+`, `-`, `@`, `\t`, `\r`) secara otomatis di-escape dengan tanda kutip tunggal (`'`).
+   - Mencegah eksekusi script atau perintah shell berbahaya saat spreadsheet dibuka di Microsoft Excel.
+
+5. **Sanitasi URL Gambar & Logo Bisnis (Anti-XSS):**
+   - URL logo pada `BusinessesPage.tsx` divalidasi dengan `isSafeImageUrl()`, hanya mengizinkan `data:image/`, `https://`, atau `http://`.
+   - Protokol berbahaya seperti `javascript:` atau `data:text/html` diblokir total.
+
+---
+
+## 9. Arsip Elemen Desain & Supresi Netlify HUD Badge
+
+Sesuai permintaan pemilik proyek, bagian ini mencatat elemen yang telah dilepas dan solusi penyembunyian badge Netlify:
+
+### A. Catatan Kode Elemen Login yang Dihapus ("Catat Dulu")
+Jika sewaktu-waktu ingin diaktifkan kembali, berikut cuplikan kode asli yang sebelumnya berada di `src/pages/LoginPage.tsx`:
+
+1. **Emblem "R" & Pill Versi Header:**
+   ```tsx
+   <div className="inline-flex items-center justify-center mb-4">
+     <div className="w-14 h-14 rounded-2xl bg-cobalt border-2 border-ink shadow-[4px_4px_0px_#111827] flex items-center justify-center text-white font-serif font-extrabold text-2xl -rotate-3 relative">
+       R
+       <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-pastel-yellow border-2 border-ink" />
+     </div>
+   </div>
+   <div>
+     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-pastel-lavender/90 border border-ink/15 text-ink text-xs font-extrabold mb-3 shadow-sm">
+       <span>✨ REVELATION GROUP • MULTI-BUSINESS PORTAL v1.2.0</span>
+     </div>
+   </div>
+   ```
+
+2. **3 Kartu Fitur Mini di Bawah Form Login:**
+   ```tsx
+   <div className="mt-6 pt-5 border-t border-dashed border-ink/15 grid grid-cols-3 gap-2 text-center">
+     <div className="p-2 rounded-xl bg-pastel-blue/40 border border-ink/10">
+       <Layers className="w-3.5 h-3.5 text-cobalt mx-auto mb-0.5" />
+       <span className="text-[10px] font-extrabold text-ink/80 block leading-tight">Multi-Bisnis</span>
+     </div>
+     <div className="p-2 rounded-xl bg-pastel-yellow/45 border border-ink/10">
+       <Sparkles className="w-3.5 h-3.5 text-ink mx-auto mb-0.5" />
+       <span className="text-[10px] font-extrabold text-ink/80 block leading-tight">Kalkulator HPP</span>
+     </div>
+     <div className="p-2 rounded-xl bg-pastel-lavender/50 border border-ink/10">
+       <ShieldCheck className="w-3.5 h-3.5 text-cobalt mx-auto mb-0.5" />
+       <span className="text-[10px] font-extrabold text-ink/80 block leading-tight">Akses Aman</span>
+     </div>
+   </div>
+   ```
+
+### B. Supresi Badge "Powered by Netlify" ("Tutupi Ini, Catat")
+Badge mengambang *"Powered by Netlify"* diinjeksi secara dinamis oleh Netlify Edge melalui script `/.netlify/scripts/hud?variant=public` yang me-mount iframe `#nl-badge-frame`.
+
+**Solusi yang Diterapkan:**
+1. **Aturan CSS di `src/index.css`:**
+   Menyembunyikan `#nl-badge-frame`, `iframe[title*="Netlify"]`, `.nl-wrap`, `.nl-badge`, dan kelas terkait menggunakan `display: none !important; opacity: 0 !important; pointer-events: none !important; clip-path: path("M0 0Z") !important; z-index: -999999 !important;`.
+2. **Skrip DOM MutationObserver di `index.html`:**
+   Mendeteksi keberadaan elemen `#nl-badge-frame` dan script Netlify HUD secara seketika saat di-mount ke DOM lalu langsung menghapusnya (`remove()`).
+3. **Panduan Dashboard Netlify (Permanen Rp 0):**
+   Untuk menonaktifkan sepenuhnya dari sisi server Netlify:
+   - Buka akun Netlify -> Pilih proyek **revelation-group**.
+   - Masuk ke menu **Project configuration** -> **General** -> cari bagian **Powered by Netlify badge**.
+   - Alihkan tombol toggle ke posisi **Off** dan Simpan.
+

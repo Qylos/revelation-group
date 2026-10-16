@@ -21,6 +21,7 @@ import {
   STORAGE_KEYS,
 } from '../services/googleSheetsService';
 import { generateProductSku } from '../utils/calculations';
+import { hashPassword, verifyPassword } from '../utils/security';
 
 export interface InviteUserResult {
   user: User;
@@ -54,9 +55,11 @@ interface AppContextType {
     newPassword: string
   ) => { ok: boolean; message?: string };
   // Google Sheets Sync
+  sheetsApiKey: string;
+  setSheetsApiKey: (key: string) => void;
   setSheetsWebhookUrl: (url: string) => void;
-  pullFromGoogleSheets: (customUrl?: string) => Promise<boolean>;
-  pushAllToGoogleSheets: (customUrl?: string) => Promise<boolean>;
+  pullFromGoogleSheets: (customUrl?: string, customKey?: string) => Promise<boolean>;
+  pushAllToGoogleSheets: (customUrl?: string, customKey?: string) => Promise<boolean>;
   resetToSeedData: () => void;
   // User Management (Super Admin only)
   inviteOrAddUser: (
@@ -212,6 +215,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return localStorage.getItem(STORAGE_KEYS.SHEETS_WEBHOOK_URL) || '';
   });
 
+  const [sheetsApiKey, setSheetsApiKeyState] = useState<string>(() => {
+    return localStorage.getItem(STORAGE_KEYS.SHEETS_API_KEY) || 'rev_secret_revelation_2026';
+  });
+
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => {
     return localStorage.getItem(STORAGE_KEYS.LAST_SYNC_TIME) || null;
@@ -244,14 +251,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(STORAGE_KEYS.SHEETS_WEBHOOK_URL, clean);
   };
 
+  const setSheetsApiKey = (key: string) => {
+    const clean = key.trim();
+    setSheetsApiKeyState(clean);
+    if (clean) {
+      localStorage.setItem(STORAGE_KEYS.SHEETS_API_KEY, clean);
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.SHEETS_API_KEY);
+    }
+  };
+
   const pullFromGoogleSheets = useCallback(
-    async (customUrl?: string): Promise<boolean> => {
+    async (customUrl?: string, customKey?: string): Promise<boolean> => {
       const targetUrl = (customUrl ?? sheetsWebhookUrl).trim();
+      const targetKey = (customKey ?? sheetsApiKey).trim();
       if (!targetUrl) return false;
       setIsSyncing(true);
       setSyncStatusMessage('Mengambil data terbaru dari Google Sheets...');
       try {
-        const remoteData = await fetchFromGoogleSheets(targetUrl);
+        const remoteData = await fetchFromGoogleSheets(targetUrl, targetKey);
         if (remoteData) {
           const hasAnyRemoteRows =
             (remoteData.users && remoteData.users.length > 0) ||
@@ -275,10 +293,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 [],
             }));
           } else {
-            await postToGoogleSheets(targetUrl, {
-              action: 'syncAll',
-              data: db,
-            });
+            await postToGoogleSheets(
+              targetUrl,
+              {
+                action: 'syncAll',
+                data: db,
+              },
+              targetKey
+            );
           }
           const nowStr = new Date().toLocaleTimeString('id-ID', {
             hour: '2-digit',
@@ -291,27 +313,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         setSyncStatusMessage('Format respons Google Sheets tidak dikenali');
         return false;
-      } catch (err) {
-        setSyncStatusMessage('Gagal terhubung ke Google Sheets (Cek URL / Izin Anyone)');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setSyncStatusMessage(`Gagal terhubung ke Google Sheets: ${msg}`);
         return false;
       } finally {
         setIsSyncing(false);
       }
     },
-    [sheetsWebhookUrl, db]
+    [sheetsWebhookUrl, sheetsApiKey, db]
   );
 
   const pushAllToGoogleSheets = useCallback(
-    async (customUrl?: string): Promise<boolean> => {
+    async (customUrl?: string, customKey?: string): Promise<boolean> => {
       const targetUrl = (customUrl ?? sheetsWebhookUrl).trim();
+      const targetKey = (customKey ?? sheetsApiKey).trim();
       if (!targetUrl) return false;
       setIsSyncing(true);
       setSyncStatusMessage('Mengirim seluruh tabel ke Google Sheets...');
       try {
-        const ok = await postToGoogleSheets(targetUrl, {
-          action: 'syncAll',
-          data: db,
-        });
+        const ok = await postToGoogleSheets(
+          targetUrl,
+          {
+            action: 'syncAll',
+            data: db,
+          },
+          targetKey
+        );
         if (ok) {
           const nowStr = new Date().toLocaleTimeString('id-ID', {
             hour: '2-digit',
@@ -321,14 +349,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           localStorage.setItem(STORAGE_KEYS.LAST_SYNC_TIME, nowStr);
           setSyncStatusMessage('Berhasil disimpan ke Google Sheets!');
         } else {
-          setSyncStatusMessage('Gagal push ke Google Sheets');
+          setSyncStatusMessage('Gagal push ke Google Sheets (Periksa API Key)');
         }
         return ok;
       } finally {
         setIsSyncing(false);
       }
     },
-    [sheetsWebhookUrl, db]
+    [sheetsWebhookUrl, sheetsApiKey, db]
   );
 
   useEffect(() => {
@@ -340,11 +368,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const syncRowInBackground = (table: string, row: unknown) => {
     if (!sheetsWebhookUrl) return;
-    postToGoogleSheets(sheetsWebhookUrl, {
-      action: 'upsertRow',
-      table,
-      row,
-    }).then((ok) => {
+    postToGoogleSheets(
+      sheetsWebhookUrl,
+      {
+        action: 'upsertRow',
+        table,
+        row,
+      },
+      sheetsApiKey
+    ).then((ok) => {
       if (ok) {
         const nowStr = new Date().toLocaleTimeString('id-ID', {
           hour: '2-digit',
@@ -358,11 +390,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const syncDeleteInBackground = (table: string, id: string) => {
     if (!sheetsWebhookUrl) return;
-    postToGoogleSheets(sheetsWebhookUrl, {
-      action: 'deleteRow',
-      table,
-      id,
-    });
+    postToGoogleSheets(
+      sheetsWebhookUrl,
+      {
+        action: 'deleteRow',
+        table,
+        id,
+      },
+      sheetsApiKey
+    );
   };
 
   const loginWithEmail = (
@@ -387,11 +423,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     }
     if (password !== undefined && found.password) {
-      if (password !== found.password) {
+      if (!verifyPassword(password, found.password)) {
         return {
           ok: false,
           message: 'Password tidak sesuai. Gunakan fitur Lupa Password jika lupa.',
         };
+      }
+      // If legacy plaintext password, upgrade transparently to salted hash
+      if (found.password === password) {
+        const upgradedUser: User = {
+          ...found,
+          password: hashPassword(password),
+        };
+        setDb((prev) => ({
+          ...prev,
+          users: enforceSuperAdminLock(
+            prev.users.map((u) => (u.id === found.id ? upgradedUser : u))
+          ),
+        }));
+        syncRowInBackground('users', upgradedUser);
       }
     }
     setCurrentUserId(found.id);
@@ -410,13 +460,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const userPassword = found?.password || 'revelation2026';
 
     if (sheetsWebhookUrl) {
-      postToGoogleSheets(sheetsWebhookUrl, {
-        action: 'sendForgotPasswordEmail',
-        from: SUPER_ADMIN_EMAIL,
-        to: cleanEmail,
-        fullName: found?.full_name || cleanEmail,
-        password: userPassword,
-      });
+      postToGoogleSheets(
+        sheetsWebhookUrl,
+        {
+          action: 'sendForgotPasswordEmail',
+          from: SUPER_ADMIN_EMAIL,
+          to: cleanEmail,
+          fullName: found?.full_name || cleanEmail,
+          password: userPassword,
+        },
+        sheetsApiKey
+      );
     }
 
     return {
@@ -446,7 +500,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           'Link undangan sudah kadaluarsa (melebihi batas waktu 5 menit). Minta Super Admin (david.calvin89@gmail.com) untuk mengirim ulang.',
       };
     }
-    if (found.password && oldPassword.trim() !== found.password) {
+    if (found.password && !verifyPassword(oldPassword.trim(), found.password)) {
       return {
         ok: false,
         message: 'Password Lama (Sementara) tidak sesuai dengan yang dikirim di email.',
@@ -461,7 +515,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const updatedUser: User = {
       ...found,
-      password: newPassword.trim(),
+      password: hashPassword(newPassword.trim()),
       invite_token: undefined,
       invite_expires_at: undefined,
       is_active: true,
@@ -509,6 +563,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (cleanEmail === SUPER_ADMIN_EMAIL.toLowerCase()) return null;
 
     const tempPassword = `REV-${Math.floor(1000 + Math.random() * 9000)}`;
+    const hashedPassword = hashPassword(tempPassword);
     const token = `inv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const expiresAt = Date.now() + 5 * 60 * 1000; // Valid for 5 minutes only
     const origin =
@@ -524,7 +579,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           full_name: cleanName,
           role,
           is_active: true,
-          password: tempPassword,
+          password: hashedPassword,
           invite_token: token,
           invite_expires_at: expiresAt,
         }
@@ -534,7 +589,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           full_name: cleanName,
           role,
           is_active: true,
-          password: tempPassword,
+          password: hashedPassword,
           invite_token: token,
           invite_expires_at: expiresAt,
           created_at: new Date().toISOString(),
@@ -553,16 +608,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     syncRowInBackground('users', newUser);
 
     if (sheetsWebhookUrl) {
-      postToGoogleSheets(sheetsWebhookUrl, {
-        action: 'sendInviteEmail',
-        from: SUPER_ADMIN_EMAIL,
-        to: cleanEmail,
-        fullName: cleanName,
-        role,
-        tempPassword,
-        inviteLink,
-        expiresInMinutes: 5,
-      });
+      postToGoogleSheets(
+        sheetsWebhookUrl,
+        {
+          action: 'sendInviteEmail',
+          from: SUPER_ADMIN_EMAIL,
+          to: cleanEmail,
+          fullName: cleanName,
+          role,
+          tempPassword,
+          inviteLink,
+          expiresInMinutes: 5,
+        },
+        sheetsApiKey
+      );
     }
 
     return {
@@ -930,6 +989,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isSuperAdmin,
         canManageBusinessAndProducts,
         sheetsWebhookUrl,
+        sheetsApiKey,
+        setSheetsApiKey,
         isSyncing,
         lastSyncTime,
         syncStatusMessage,

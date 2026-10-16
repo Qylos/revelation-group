@@ -1,11 +1,22 @@
 /**
  * ============================================================================
- * REVELATION GROUP — GOOGLE SHEETS REAL-TIME DATABASE BACKEND (Apps Script)
+ * REVELATION GROUP — SECURE GOOGLE SHEETS REAL-TIME DATABASE BACKEND (Apps Script)
  * ============================================================================
  * Akun Super Admin Utama: david.calvin89@gmail.com
+ *
+ * PANDUAN DEPLOY:
+ * 1. Buka Google Sheet di akun david.calvin89@gmail.com
+ * 2. Menu Extensions -> Apps Script, ganti isi Code.gs dengan kode ini
+ * 3. Simpan (Ctrl+S / Cmd+S)
+ * 4. Klik Deploy -> New deployment -> Web app
+ *    - Description: Revelation Backend Secure v1.2
+ *    - Execute as: Me (david.calvin89@gmail.com)
+ *    - Who has access: Anyone
+ * 5. Salin URL Web App dan tempel di Halaman Super Admin Revelation Group.
  */
 
 const SUPER_ADMIN_EMAIL = 'david.calvin89@gmail.com';
+const DEFAULT_API_SECRET = 'rev_secret_revelation_2026';
 
 const SCHEMAS = {
   users: ['id', 'email', 'full_name', 'role', 'is_active', 'password', 'invite_token', 'invite_expires_at', 'created_at'],
@@ -16,6 +27,22 @@ const SCHEMAS = {
   bank_settings: ['id', 'bank_name', 'opening_balance', 'opening_date', 'updated_by', 'updated_at'],
   balance_adjustments: ['id', 'adjustment_date', 'system_balance_before', 'actual_bank_balance', 'difference_amount', 'reason', 'created_by', 'created_at']
 };
+
+function getApiSecret() {
+  try {
+    const prop = PropertiesService.getScriptProperties().getProperty('API_SECRET');
+    if (prop && prop.trim()) return prop.trim();
+  } catch (err) {}
+  return DEFAULT_API_SECRET;
+}
+
+function isAuthorized(e, payload) {
+  const secret = getApiSecret();
+  if (!secret) return true;
+  if (e && e.parameter && e.parameter.key === secret) return true;
+  if (payload && (payload.apiKey === secret || payload.key === secret)) return true;
+  return false;
+}
 
 function ensureSheetsInitialized() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -123,6 +150,13 @@ function deleteRowFromSheet(sheetName, id) {
 }
 
 function doGet(e) {
+  if (!isAuthorized(e, null)) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: 'error',
+      message: 'Unauthorized: Invalid or missing API Key.'
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
   ensureSheetsInitialized();
   const bankRows = sheetToObjects('bank_settings');
   const payload = {
@@ -150,6 +184,14 @@ function doPost(e) {
   try {
     ensureSheetsInitialized();
     const body = JSON.parse(e.postData.contents);
+
+    if (!isAuthorized(e, body)) {
+      return ContentService.createTextOutput(JSON.stringify({
+        status: 'error',
+        message: 'Unauthorized: Invalid or missing API Key.'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     const action = body.action;
 
     if (action === 'syncAll') {
@@ -182,11 +224,20 @@ function doPost(e) {
           'Salam,\nRevelation Group (' + SUPER_ADMIN_EMAIL + ')'
       });
     } else if (action === 'sendForgotPasswordEmail') {
+      // Open Email Relay Defense: verify recipient exists in registered users
+      const users = sheetToObjects('users');
+      const targetUser = users.find(function(u) { return u.email && u.email.toLowerCase() === String(body.to).toLowerCase(); });
+      if (!targetUser) {
+        return ContentService.createTextOutput(JSON.stringify({
+          status: 'error',
+          message: 'User email not found in registered accounts.'
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
       MailApp.sendEmail({
         to: body.to,
         subject: 'Informasi Password Akses — Revelation Group',
         body:
-          'Halo ' + (body.fullName || '') + ',\n\n' +
+          'Halo ' + (body.fullName || targetUser.full_name || '') + ',\n\n' +
           'Berikut adalah password akses Anda untuk Portal Revelation Group:\n' +
           'Password: ' + body.password + '\n\n' +
           'Silakan gunakan password tersebut untuk Login.\n\n' +

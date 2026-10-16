@@ -14,6 +14,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { Business } from '../types';
 import { compressImageFile, calculateFinancialSummary, formatRupiah } from '../utils/calculations';
+import { isSafeImageUrl } from '../utils/security';
 import { DoodleStar, WavyCoralUnderline, ProfitLossBadge } from '../components/Doodles';
 
 const PASTEL_ACCENT_OPTIONS = [
@@ -160,7 +161,7 @@ export const BusinessesPage: React.FC = () => {
                     className="w-16 h-16 rounded-2xl border border-ink/15 flex items-center justify-center font-serif font-extrabold text-2xl text-ink shrink-0 overflow-hidden shadow-sm"
                     style={{ backgroundColor: accentHex }}
                   >
-                    {biz.logo_url ? (
+                    {biz.logo_url && isSafeImageUrl(biz.logo_url) ? (
                       <img
                         src={biz.logo_url}
                         alt={biz.name}

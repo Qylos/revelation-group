@@ -16,6 +16,27 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,700;1,9..144,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        function removeNetlifyBadge() {
+          var badge = document.getElementById('nl-badge-frame') || document.querySelector('iframe[title*="Netlify"]');
+          if (badge && badge.parentNode) {
+            badge.parentNode.removeChild(badge);
+          }
+          var script = document.querySelector('script[data-nf-variant]');
+          if (script && script.parentNode) {
+            script.parentNode.removeChild(script);
+          }
+        }
+        removeNetlifyBadge();
+        if (window.MutationObserver) {
+          var observer = new MutationObserver(removeNetlifyBadge);
+          observer.observe(document.documentElement, { childList: true, subtree: true });
+        }
+        window.addEventListener('DOMContentLoaded', removeNetlifyBadge);
+        window.addEventListener('load', removeNetlifyBadge);
+      })();
+    </script>
   </head>
   <body class="bg-cream text-ink font-sans antialiased selection:bg-pastel-yellow selection:text-ink">
     <div id="root"></div>
