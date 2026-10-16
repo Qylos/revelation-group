@@ -64,6 +64,30 @@ function ensureSheetsInitialized() {
   });
 }
 
+/**
+ * ⚡ KLIK TOMBOL "RUN" PADA FUNGSI INI DI APPS SCRIPT
+ * Untuk langsung membuat 7 tab lembar kerja dan mengisi akun Super Admin awal secara otomatis!
+ */
+function setupNow() {
+  ensureSheetsInitialized();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const userSheet = ss.getSheetByName('users');
+  if (userSheet && userSheet.getLastRow() <= 1) {
+    userSheet.appendRow([
+      'usr-super-admin-david',
+      SUPER_ADMIN_EMAIL,
+      'David Calvin',
+      'super_admin',
+      true,
+      '',
+      '',
+      '',
+      new Date().toISOString()
+    ]);
+  }
+  Logger.log('✅ Berhasil! 7 Tab Lembar Kerja telah dibuat di Google Sheets Anda.');
+}
+
 function sheetToObjects(sheetName) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);

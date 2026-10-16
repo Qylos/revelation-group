@@ -200,6 +200,25 @@ function ensureSheetsInitialized() {
   });
 }
 
+function setupNow() {
+  ensureSheetsInitialized();
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const userSheet = ss.getSheetByName('users');
+  if (userSheet && userSheet.getLastRow() <= 1) {
+    userSheet.appendRow([
+      'usr-super-admin-david',
+      SUPER_ADMIN_EMAIL,
+      'David Calvin',
+      'super_admin',
+      true,
+      '',
+      '',
+      '',
+      new Date().toISOString()
+    ]);
+  }
+}
+
 function sheetToObjects(name) {
   const s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
   if (!s || s.getLastRow() <= 1) return [];
