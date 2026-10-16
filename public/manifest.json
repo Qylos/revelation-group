@@ -1,0 +1,37 @@
+{
+  "id": "/",
+  "name": "Revelation Group — Multi-Business Management",
+  "short_name": "Revelation",
+  "description": "Aplikasi web manajemen multi-bisnis terpusat Revelation Group untuk pencatatan transaksi penjualan, pengeluaran operasional, kalkulasi HPP, dan analitik Laba/Rugi.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FAF7F2",
+  "theme_color": "#FAF7F2",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
